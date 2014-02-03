@@ -1,0 +1,254 @@
+<html>
+<meta http-equiv='Content-Type' content='text/html' charset='UTF-8' />
+<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<script src="http://code.highcharts.com/modules/exporting.js"></script>
+<script type="text/javascript" src="http://www.highcharts.com/js/highstock.js"></script>
+
+<script src="https://964c45efbfed1453bbfd-9cb0d5296d5e7672016574e2c9740dfd.ssl.cf2.rackcdn.com/records.json?callback=?"></script>
+<script type="text/javascript" ">
+var pass1=[],pass2=[],arr=[],mean=0,value=[]
+scaledT= [89.59923639,95.51048774,79.1766709,80.09028702,78.19817414,89.96654524,95.86203612,89.84294238,90.3331263,95.66698612,98.67578721,75.9283326,89.97967296,95.86828187,98.53992997,95.6143805,98.60759738,94.66503551,98.5287342,99.99939129,95.03714512,64.71959075,99.89555993,94.59884644,95.25338198,62.55284537,99.49006997,89.50014863,95.46163486,88.74509463,89.12553649,95.44375508,50.92361793,0,88.60627543,94.75190331,69.35068673,76.96897245,94.69727046,73.25740964,99.78742906,88.26697348,91.53559935,97.9658487,81.82727559,96.69100169,91.53271043,96.15310606,91.37310029,96.39964487,85.34807202,98.38144089,68.88293035,89.38928498,95.302924,99.15150322,98.45145416,95.18316334,98.45232804,90.57191349,92.3770723,99.87242472,99.37701554,97.09806103,97.02957585,96.58725714,96.5017904]
+scaledC=[98.22813142,98.19012478,97.46725387,97.33717186,97.22816641,97.21710325,97.20602637,97.15670061,97.02331261,97.01539105,96.92194946,96.88410587,96.8390708,96.73062209,96.65638487,96.46178787,96.27185839,96.26792209,96.10485558,96.02824873,95.8506032,95.74587721,95.62232361,95.62048686,95.54796719,94.04435333,94.03707458,93.98865723,93.72691409,93.43518393,93.19871405,93.18461626,93.0491332,93.04254537,92.68963877,92.68641244,92.42506471,92.27997102,92.02943372,91.83935056,91.62887741,91.32372697,90.30745325,89.94219038,89.66433852,89.3946203,89.30232219,89.14925667,88.66531118,88.1780392,88.00071152,87.10082973,85.84213904,85.36951872,85.00059289,84.87741844,84.50008822,84.13066602,83.96285165,83.81969105,82.31207131,81.79606904,81.10738192,79.34674571,79.0009143,64.07882156,63.43840714]
+$.ajaxSetup({
+async: false
+});
+
+$.getJSON("records.txt",function(result){
+for( i=0;i<result["Servers"].length;i++)
+{
+if(result["Servers"][i].passno == 1)
+{
+pass1.push(result["Servers"][i])
+}
+else
+{
+pass2.push(result["Servers"][i])
+}
+
+}
+
+});
+
+function doalpha()
+{
+
+
+alpha=parseFloat(document.getElementById('alpha').value)
+if(isNaN(alpha))
+{
+alpha=0.8
+}
+
+
+
+value=[]
+for(var i=0;i<arr.length;i++)
+{
+
+value.push((scaledT[i]*alpha + scaledC[i]*(1 - alpha))/13)
+
+console.log(value[i])
+}
+
+plotGraph();
+}
+
+
+
+function storeData()
+{
+arr=[]
+for(var i=0;i<pass1.length;i++)
+{
+
+scaledtimegb = 100 - (((((pass1[i].realtime  + pass2[i].realtime)/669)*1024)-1716.58)/(98110.34-1716.58)*100)
+
+scaledcostgb=100-((((pass1[i].cost /3600 )* ( (pass1[i].realtime + pass2[i].realtime )/669)*1024)-0.091)/(10.43-0.091)*100)
+console.log(scaledcostgb)
+if(scaledcostgb < 0)
+console.log(pass1[i].name)
+if (pass1[i].name=="m1.small_paravirtual")
+{
+scaledtimegb=0
+scaledcostgb=84
+}
+if (pass1[i].name=="i2.8xlarge_hvm")
+{
+scaledtimegb=0
+scaledcostgb=84
+}
+var obj={ name: pass1[i].name, cost: (pass1[i].cost /3600 )* ( pass1[i].realtime + pass2[i].realtime ) ,time: ( pass1[i].realtime + pass2[i].realtime ) , scaledT : scaledtimegb, scaledC:scaledcostgb}
+arr.push(obj) 
+
+console.log(arr[i].scaledT)
+console.log(arr[i].scaledC)
+}
+
+}
+
+function getCost()
+{
+costN=[]
+for( i=0;i<pass1.length;i++)
+{
+costN.push(arr[i].cost)
+}
+return costN
+}
+
+function getNames()
+{
+names=[]
+for(var i=0;i<arr.length;i++)
+{
+names.push(arr[i].name)
+}
+return names
+}
+
+function calculateValue()
+{
+
+}
+
+$(document).ready(function () {
+storeData()
+arr.sort(function(a,b) { return parseFloat(a.cost) - parseFloat(b.cost) } )
+calculateValue()
+plotGraph();
+
+});
+
+
+
+function plotGraph()
+{
+$(function () {
+   
+        $('#container').highcharts({
+        
+           
+            title: {
+                text: 'Cost of Encoding a sample file of size 669 MB to H.264 format ',
+                x: -20 //center
+            },
+            subtitle: {
+                text: '',
+                x: -20
+            },
+            xAxis: {
+                categories: getNames(),
+               labels: {
+                 formatter: function () {
+        if (/^\d/.test(this.value)) {
+            return '<b><span style="fill:#088A08 ;font-weight: bold;font-size: 8pt"> ' + this.value + '</span></b>';
+        } else {
+            return '<b><span style="fill: #210B61 ;font-weight: bold;font-size: 9pt"> ' + this.value + '</span></b>';
+        }
+    },
+                    rotation: -55,
+                    align: 'right',
+                    style: {
+                        fontSize: '13px',
+                        
+                        fontFamily: 'Verdana, sans-serif'
+                    }
+                },
+                   offset: 0,
+                top: 530,
+                height: 80,  
+            
+            },
+            yAxis: {
+            min:0,
+                title: {
+                    text: 'Cost ($)'
+                },
+                plotLines: [{
+                    value: 0,
+                    width: 1,
+                    color: '#808080'
+                }]
+            },
+            tooltip: {
+                valueSuffix: '$'
+            },
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'middle',
+                borderWidth: 0
+            }
+            
+            
+            
+            
+            ,
+            series: [{
+                name: 'Cost',
+                step: true,
+                data: getCost()
+            },
+            {
+                name: 'Instance Value (calculated)',
+                step: true,
+                data: value
+            }, {
+                name: 'Rackspace Instance',
+                type: 'spline',
+                
+               
+                color: '#088A08',
+              
+                lineWidth: 3,
+              
+                  marker: {
+                    enabled: false
+                },
+              
+                tooltip: {
+                    valueSuffix: ''
+                }
+    
+            }, {
+                name: 'AWS Instance',
+                type: 'spline',
+              
+                color: '#210B61',
+               
+                lineWidth: 3,
+                 marker: {
+                    enabled: false
+                },
+              
+               
+               
+                
+                tooltip: {
+                    valueSuffix: ''
+                }
+    
+            }
+            
+            ]
+        });
+    });
+    }
+
+
+</script>
+
+
+    <div id="container" style="min-width: 310px; height: 830px; margin: 0 auto"></div>
+    Enter the value for 'x' (0-1) <input type="text" id="alpha" ></input>	<button onclick="doalpha()">Submit</button> 	
+    <br><br>
+    
+    There is always a tradeoff between the cost and the time required to compete the job. So, x is a parameter which decides the priority between the two. Please enter a value  between 0 and 1 to calculate the Server value <br>
+    
+    <p>As x → 0 , give more priority to cost <br>
+    x → 1, give more priority to time <br>
+    <b> Server value = x *  Scaled (time taken/gb) + (1 - x)* (Scaled (cost/gb)) </b>
+    </html>
+    

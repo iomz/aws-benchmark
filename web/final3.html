@@ -1,0 +1,401 @@
+<html>
+<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<script src="http://code.highcharts.com/modules/exporting.js"></script>
+<script type="text/javascript" src="http://www.highcharts.com/js/highstock.js"></script>
+
+<script src="http://2c1167a24bd4f9dd8df8-9cb0d5296d5e7672016574e2c9740dfd.r13.cf2.rackcdn.com/records.txt"></script>
+<script type="text/javascript" >
+var pass1=[],pass2=[],arr=[],obj=[]
+$.getJSON("records.txt",function(result){
+console.log(result["Servers"][0].name)
+pass1=[]
+pass2=[]
+arr=[]
+obj=[]
+for( i=0;i<result["Servers"].length;i++)
+{
+
+
+if(result["Servers"][i].passno==1)
+{
+pass1.push(result["Servers"][i])
+}
+else
+{
+pass2.push(result["Servers"][i])
+}
+
+}
+for( i=0;i<pass1.length;i++)
+{
+var obj={name: pass1[i].name, cost : (pass1[i].cost/3600) * (pass1[i].realtime + pass2[i].realtime), timeexec: (pass1[i].realtime + pass2[i].realtime)*1024/669 , memory : pass1[i]["Memory(GiB)"], vcpu:pass1[i].vCPU};
+
+arr.push(obj)
+
+}
+
+
+
+});
+
+
+
+
+function getMemoryValues()
+{
+mem=[]
+for(var i=0;i<arr.length;i++)
+{
+mem.push(parseFloat(arr[i].memory))
+}
+
+return mem
+}
+
+function presstimeMB()
+{
+arr.sort(function(a,b) { return parseFloat(a.timeexec) - parseFloat(b.timeexec) } )
+plotGraph()
+}
+
+function gettimembvalues()
+{
+timemb=[]
+for(var i=0;i<arr.length;i++)
+{
+timemb.push(arr[i].timeexec)
+}
+return timemb
+}
+
+
+
+function getvCPU()
+{
+vCPU=[]
+for(var i=0;i<arr.length;i++)
+{
+temp=arr[i].vcpu
+if (temp==("1*1"))
+	temp=1
+console.log(temp)
+vCPU.push(parseInt(temp))
+}
+return vCPU
+}
+
+
+function getCombinedCost()
+{
+cost=[]
+for(var i=0;i<arr.length;i++)
+{
+t=((arr[i].cost/669)*1024).toFixed(2);
+cost.push(parseFloat(t))
+
+}
+
+
+
+return cost
+}
+function getName()
+{
+name2=[]
+for(var i=0;i<arr.length;i++)
+{
+name2.push(arr[i].name)
+}
+return name2
+}
+
+$(document).ready(function () {
+
+plotGraph();
+
+});
+
+
+function presscostGB()
+{
+arr.sort(function(a,b) { return parseFloat(a.cost) - parseFloat(b.cost) } )
+
+plotGraph()
+}
+function plotGraph()
+{
+$(function () {
+        $('#container').highcharts({
+            chart: {
+                zoomType: 'xy'
+            },
+            title: {
+                text: 'Performance Metrics for H.264 Encoding'
+            },
+            subtitle: {
+                text: 'AWS/Rackspace'
+            },
+            xAxis: [{
+                categories: getName(),
+                 labels: {
+                 formatter: function () {
+        if (/^\d/.test(this.value)) {
+            return '<b><span style="fill:#088A08 ;font-weight: bold;font-size: 8pt"> ' + this.value + '</span></b>';
+        } else {
+            return '<b><span style="fill: #210B61 ;font-weight: bold;font-size: 9pt"> ' + this.value + '</span></b>';
+        }
+    },
+                    rotation: -55,
+                    align: 'right',
+                    style: {
+                        fontSize: '13px',
+                        
+                        fontFamily: 'Verdana, sans-serif'
+                    }
+                },
+                   offset: 0,
+                top: 530,
+                height: 80,  
+            }],
+            yAxis: [
+              
+            
+            { // Primary yAxis
+                labels: {
+                    formatter: function() {
+                        return this.value +' GB';
+                    },
+                    style: {
+                        color: '#89A54E'
+                    }
+                },
+                title: {
+                    text: 'Available Memory(GB)',
+                    style: {
+                        color: '#222A0A'
+                    }
+                },
+                min:0,
+              
+    
+            }, { // Secondary yAxis
+                gridLineWidth: 0,
+                title: {
+                    text: 'Cost per GB($)',
+                    style: {
+                        color: '#4572A7'
+                    }
+                },
+                labels: {
+                    formatter: function() {
+                        return this.value +' $';
+                    },
+                    style: {
+                        color: '#4572A7'
+                    }
+                }
+    
+            }, { // Tertiary yAxis
+                gridLineWidth: 0,
+                title: {
+                    text: 'Time per 1 GB of encoding(seconds)',
+                    style: {
+                        color: '#AA4643'
+                    }
+                },
+                min:0,
+                labels: {
+                    formatter: function() {
+                        return this.value +' s';
+                    },
+                    style: {
+                        color: '#AA4643'
+                    }
+                },
+                opposite: true
+            }, { // Tertiary yAxis
+                gridLineWidth: 0,
+                title: {
+                    text: 'Number of available vCPUs',
+                    style: {
+                        color: '#B45F04'
+                    }
+                },
+                min:0,
+                labels: {
+                    formatter: function() {
+                        return this.value +' ';
+                    },
+                    style: {
+                        color: '#B45F04'
+                    }
+                },
+                opposite: true
+            }, { // Tertiary yAxis
+                gridLineWidth: 0,
+                title: {
+                    text: 'Rackspace',
+                    style: {
+                        color: '#B45F04'
+                    }
+                },
+                min:0,
+             labels: {
+                enabled: false
+            },
+            title: {
+                text: null
+            },
+                opposite: true
+            }, { // Tertiary yAxis
+                gridLineWidth: 0,
+                title: {
+                    text: 'AWS',
+                    style: {
+                        color: '#B45F04'
+                    }
+                },
+                min:0,
+              labels: {
+                enabled: false
+            },
+            title: {
+                text: null
+            },
+                opposite: true
+            }
+   
+   
+            
+            ],
+            tooltip: {
+                shared: true
+            },
+            legend: {
+                layout: 'vertical',
+                align: 'left',
+                x: 420,
+                verticalAlign: 'top',
+                y: 80,
+                floating: true,
+                backgroundColor: '#FFFFFF'
+            },
+            series: [
+            
+            
+            {
+                name: 'Memory',
+                color: '#222A0A',
+                type: 'line',
+                step:true,
+                dashStyle: 'shortdot',
+                data: (getMemoryValues()),
+               lineWidth: 2,
+               yAxis: 0 ,
+                tooltip: {
+                    valueSuffix: ' GB'
+                }
+            },
+            
+            
+            {
+                name: 'Cost/GB of encoding',
+                color: '#4572A7',
+                type: 'column',
+                yAxis: 1,
+                data: getCombinedCost(),
+                step: true,
+                tooltip: {
+                    valueSuffix: ' $'
+                }
+    
+            }, {
+                name: 'Time/GB of encoding',
+                type: 'spline',
+                color: '#AA4643',
+                yAxis: 2,
+                lineWidth: 2,
+                data: gettimembvalues(),
+                marker: {
+                    enabled: false
+                },
+              
+                tooltip: {
+                    valueSuffix: ' s'
+                }
+    
+            }, {
+                name: 'vCPUs',
+                type: 'line',
+                step:true,
+                color: '#B45F04',
+                yAxis: 3,
+                lineWidth: 2,
+                dashStyle: 'shortdot',
+                data: getvCPU(),
+                marker: {
+                    enabled: false
+                },
+                
+                tooltip: {
+                    valueSuffix: ''
+                }
+    
+            }, {
+                name: 'Rackspace Instance',
+                type: 'spline',
+                
+               
+                color: '#088A08',
+                yAxis: 4,
+                lineWidth: 3,
+              
+                  marker: {
+                    enabled: false
+                },
+              
+                tooltip: {
+                    valueSuffix: ''
+                }
+    
+            }, {
+                name: 'AWS Instance',
+                type: 'spline',
+              
+                color: '#210B61',
+                yAxis: 5,
+                lineWidth: 3,
+                 marker: {
+                    enabled: false
+                },
+              
+               
+               
+                
+                tooltip: {
+                    valueSuffix: ''
+                }
+    
+            }
+            
+           
+            ]
+        });
+    });
+    
+}
+
+
+
+
+</script>
+
+ Sort by <input type="radio" name="group1" value="costgb" onclick="presscostGB()">Cost per GB </input> &nbsp;
+
+
+<input type="radio" name="group1" value="timemb"  onclick=presstimeMB()> Time per GB </input>&nbsp;
+    <div id="container" style="min-width: 310px; height: 800px; margin: 0 auto"></div>
+    </html>
+    

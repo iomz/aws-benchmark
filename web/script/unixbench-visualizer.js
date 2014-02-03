@@ -15,7 +15,7 @@ var currentTest = "index";
 var currentParallel = "multi";
 var currentSorter = "mean";
 var currentScatter = 'price';
-var currentGroup = "vcpu"
+var currentGroup = "vcpu";
 var colors = Highcharts.getOptions().colors;
 var Parallels = ['single', 'multi'];
 var Groups = ['size', 'type', 'family', 'vcpu', 'memoryRange', 'priceRange'];
@@ -173,6 +173,7 @@ function plotPerGroup(parallel, group, test) {
 				};
 			}
 		});
+		var drilldowns = {};
 		var ranges = groupResults({
 			'test' : test,
 			'parallel' : parallel
@@ -209,13 +210,15 @@ function plotPerGroup(parallel, group, test) {
 			name : 'EC2 ' + tname,
 			type : 'column',
 			yAxis : 0,
-			data : ec2means
+			data : ec2means,
+            drilldown : true
 		}, {
 			color : colors[3],
 			name : 'Rackspace ' + tname,
 			type : 'column',
 			yAxis : 0,
-			data : rackmeans
+			data : rackmeans,
+            drilldown : true
 		}, {
 			color : colors[1],
 			name : 'Number of instances',
@@ -223,8 +226,43 @@ function plotPerGroup(parallel, group, test) {
 			yAxis : 1,
 			data : nums
 		}];
-		//drawGraph(el, title, subtitle, xaxis, yaxis, yunit, series)
-		drawGraph("#" + group + "_chart", Tests[test] + ' (' + parallel + ')', 'Grouped by ' + Specs[group], names, 0, yaxis, tool, series);
+		$("#" + group + "_chart").highcharts({
+			title : {
+				text : Tests[test] + ' (' + parallel + ')',
+				x : -20 //center
+			},
+			subtitle : {
+				text : 'Grouped by ' + Specs[group],
+				x : -20
+			},
+			xAxis : {
+				categories : names,
+				labels : {
+					rotation : 0
+				}
+			},
+			yAxis : yaxis,
+			tooltip : tool,
+			plotOptions : {
+				column : {
+					stacking : 'normal'
+				}
+			},
+			legend : {
+				align : "left",
+				backgroundColor : '#FFF',
+				floating : true,
+				layout : "vertical",
+				verticalAlign : "top",
+				x : 150,
+				y : 50
+			},
+			series : series,
+		    drilldown : {
+		    	series : []
+		    }
+		});
+
 		$("#" + group + "_chart").highcharts().setSize(900, 600);
 	});
 }
@@ -478,7 +516,7 @@ function plotBest(parallel, test, sorter, bestLimit) {
 	var std = Math.sqrt(varianceSum / (means.length - 1));
 	means = [];
 	mean = parseFloat(mean.toFixed(2));
-	for ( i = 0; i < bestLimit; i++)
+	for ( i = 0; i < names.length; i++)
 		means.push(mean);
 
 	var zscores = logs({

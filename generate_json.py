@@ -116,6 +116,8 @@ def main():
                         log['cloud'] = instances_dict[instance_name]['cloud']
                         log['price'] = instances_dict[instance_name]['price']
                         log['priceRatio'] = log['mean']/(100*log['price'])
+                        log['memory'] = instances_dict[instance_name]['memory']
+                        log['vcpu'] = instances_dict[instance_name]['vcpu']
 
                         logs.append(log)
 

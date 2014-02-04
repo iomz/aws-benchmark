@@ -206,14 +206,14 @@ function plotPerGroup(parallel, group, test) {
 			yAxis : 0,
 			data : ranges
 		}, {
-			color : colors[5],
+			color : colors[6],
 			name : 'EC2 ' + tname,
 			type : 'column',
 			yAxis : 0,
 			data : ec2means,
             drilldown : true
 		}, {
-			color : colors[3],
+			color : colors[5],
 			name : 'Rackspace ' + tname,
 			type : 'column',
 			yAxis : 0,
@@ -566,13 +566,13 @@ function plotBest(parallel, test, sorter, bestLimit) {
 		yAxis : 0,
 		data : sds
 	}, {
-		color : colors[5],
+		color : colors[6],
 		name : 'EC2 ' + tname,
 		type : 'column',
 		yAxis : 0,
 		data : ec2means
 	}, {
-		color : colors[3],
+		color : colors[5],
 		name : 'Rackspace ' + tname,
 		type : 'column',
 		yAxis : 0,
@@ -590,7 +590,7 @@ function plotBest(parallel, test, sorter, bestLimit) {
 		yAxis : 2,
 		data : prices
 	}, {
-		color : colors[6],
+		color : colors[3],
 		name : 'Mean',
 		type : 'line',
 		yAxis : 0,
@@ -734,15 +734,15 @@ function plotScatter(parallel, test, scatter) {
 		},
 		series : [{
 			name : 'EC2 Paravirtual',
-			color : colors[0],
+			color : colors[6],
 			data : ec2paravirtuals
 		}, {
 			name : 'Rackspace Paravirtual',
-			color : colors[1],
+			color : colors[5],
 			data : rackparavirtuals
 		}, {
 			name : 'EC2 HVM',
-			color : 'rgba(223, 83, 83, .5)',
+			color : colors[2],
 			data : hvms
 		}]
 	});

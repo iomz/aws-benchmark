@@ -22,7 +22,7 @@ hvm_ami = 'ami-d1bfe4b8'
 # Confirm ~/.boto exists and contains credentials
 region = 'us-east-1'
 #k_name = 'iomz@cisco-macbook'
-k_name = 'kougaikw@cisco.com'
+k_name = 'kougaikw@dhcp-171-68-21-209.cisco.com'
 s_grp = 'quick-start-1'
 
 def start_benchmark_instance(conn, instance, u_data, bdm):

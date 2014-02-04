@@ -214,7 +214,7 @@ def main():
                                         members[x]['mean'] = x264s[x][val]
                                         members[x]['cloud'] = cloud
                                 if len(means) == 0:
-                                    index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'parallel':p, 'members':members}
+                                    #index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'parallel':p, 'members':members}
                                     continue
                                 mean = msum/len(means)
                                 if len(means) == 1:

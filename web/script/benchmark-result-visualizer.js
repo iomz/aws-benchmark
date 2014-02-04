@@ -90,10 +90,13 @@ var TestUnits = {
 };
 
 function plotPerGroup(parallel, group, test, xsorter) {
-	if (test == 'x264')
+	if (test == 'x264') {
 		var groupDataFile = "data/" + group + "_" + test + "_" + xsorter + ".json";
-	else
+		var ysorter = ' desc';
+	} else {
 		var groupDataFile = "data/" + group + "_" + test + "_" + parallel + ".json";
+		var ysorter = '';
+	}
 	$.getJSON(groupDataFile, function(d) {
 		var groupResults = TAFFY();
 		$.each(d, function(k, v) {
@@ -109,7 +112,7 @@ function plotPerGroup(parallel, group, test, xsorter) {
 			var members = {
 				name : k,
 				id : k,
-				data : memberData().order('y').map(function(i) {
+				data : memberData().order('y' + ysorter).map(function(i) {
 					return {
 						color : i.color,
 						name : i.name,
@@ -136,16 +139,16 @@ function plotPerGroup(parallel, group, test, xsorter) {
 			var tName = Tests[test] + ' (' + TestUnits[test] + ')';
 			var subTitle = 'Grouped by ' + Specs[group];
 		}
-		var names = groupResults().order('mean').map(function(i) {
+		var names = groupResults().order('mean' + ysorter).map(function(i) {
 			return i.name;
 		});
-		var ranges = groupResults().order('mean').map(function(i) {
+		var ranges = groupResults().order('mean' + ysorter).map(function(i) {
 			return [parseFloat(i.range[0].toFixed(2)), parseFloat(i.range[1].toFixed(2))];
 		});
-		var nums = groupResults().order('mean').map(function(i) {
+		var nums = groupResults().order('mean' + ysorter).map(function(i) {
 			return parseFloat(i.num.toFixed(2));
 		});
-		var means = groupResults().order('mean').map(function(i) {
+		var means = groupResults().order('mean' + ysorter).map(function(i) {
 			return {
 				name : i.name,
 				y : parseFloat(i.mean.toFixed(2)),
@@ -173,11 +176,6 @@ function plotPerGroup(parallel, group, test, xsorter) {
 				title : {
 					text : tName
 				}
-			}, {
-				title : {
-					text : 'Number of Instances'
-				},
-				opposite : true
 			}],
 			legend : {
 				enabled : false
@@ -246,7 +244,7 @@ function plotPerGroup(parallel, group, test, xsorter) {
 				series : drilldownSeries
 			}
 		});
-		$(el).highcharts().setSize(1020, 300);
+		$(el).highcharts().setSize(1040, 300);
 	});
 }
 
@@ -879,7 +877,9 @@ $(function() {
 	});
 	$.getJSON("data/instances.json", function(d) {
 		$.each(d, function(k, v) {
-			instances.insert(v);
+			var tmp = v;
+			tmp['name'] = k;
+			instances.insert(tmp);
 		});
 	});
 	$.getJSON("data/x264result_new.json", function(d) {

@@ -6,9 +6,10 @@ logs/
 .project
 .s3cfg
 *.264
-*.mp4
-*.log
+*.ico
 *.json
+*.log
+*.mp4
 *.out
 *.stats
 *.tgz

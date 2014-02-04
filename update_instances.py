@@ -322,8 +322,7 @@ def update_instance_list(cloud):
                     Specs[10]: i[8],                # Network Performance
                     Specs[11]: i[1].split('.')[1],  # Instance size
                     Specs[12]: get_memory_range(float(i[5])),
-                    Specs[13]: get_price_range(float(price)),
-                    "name": instance_name
+                    Specs[13]: get_price_range(float(price))
                 }
                 instance_dict[instance_name] = instance
 
@@ -358,8 +357,7 @@ def update_instance_list(cloud):
                 Specs[10]: network,                        # Network Performance
                 Specs[11]: name.split('_')[0],             # Instance Size
                 Specs[12]: get_memory_range(i["Memory (GiB)"]),
-                Specs[13]: get_price_range(float(i["price"])),
-                "name": instance_name
+                Specs[13]: get_price_range(float(i["price"]))
             }
             instance_dict[instance_name] = instance
 

@@ -174,21 +174,23 @@ def main():
                             means = []
                             msum = 0
                             cloud = ''
+                            members = {}
                             for l in logs:
                                 if l['test'] == t and instances_dict[l['name']][g] == gs and l['parallel'] == p:
                                     means.append(l['mean'])
+                                    members[l['name']] = l['mean']
                                     msum += l['mean']
                                     cloud = instances_dict[l['name']]['cloud']
                             if len(means) == 0:
-                                index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'parallel':p}
+                                index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'parallel':p, 'members':members}
                                 continue
                             mean = msum/len(means)
                             if len(means) == 1:
-                                index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'parallel':p}
+                                index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'parallel':p, 'members':members}
                                 continue
                             mmin = min(means)
                             mmax = max(means)
-                            index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'parallel':p}
+                            index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'parallel':p, 'members':members}
                         result_file = 'web/data/ub_'+g+'_'+t+'_'+p+'.json'
                         with open(result_file, 'w') as outfile:
                             js.dump(index_dict, fp=outfile, indent=4*' ')

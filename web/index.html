@@ -4,7 +4,7 @@
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Cisco CTO - Cloud Stack Evaluation - UnixBench</title>
+		<title>Cisco CTO - Cloud Stack Evaluation</title>
 
 		<!-- Bootstrap -->
 		<link href="//netdna.bootstrapcdn.com/bootstrap/3.1.0/css/bootstrap.min.css" rel="stylesheet">
@@ -16,10 +16,14 @@
 		<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
 		<![endif]-->
 	</head>
-	<body>
+    <body>
+        <h1>Cloud Stack Evaluation</h1>
 		<ul class="nav nav-tabs" id="Tabs">
 			<li class="active">
-				<a href="#group" data-toggle="tab">Group detail</a>
+				<a href="#unixBench" data-toggle="tab">UnixBench</a>
+			</li>
+			<li>
+				<a href="#x264" data-toggle="tab">x264</a>
 			</li>
 			<li>
 				<a href="#size" data-toggle="tab">Size groups</a>
@@ -40,9 +44,6 @@
 				<a href="#priceRange" data-toggle="tab">Price groups</a>
 			</li>
 			<li>
-				<a href="#best" data-toggle="tab">Best Ns</a>
-			</li>
-			<li>
 				<a href="#scatterPrice" data-toggle="tab">Scatter Price</a>
 			</li>
 			<li>
@@ -52,12 +53,12 @@
 				<a href="#scattervCPU" data-toggle="tab">Scatter vCPU</a>
 			</li>
 			<li>
-				<a href="#" data-toggle="tab"></a>
+				<a href="#group" data-toggle="tab">Group detail</a>
 			</li>
 		</ul>
-		<div class="input-group" id="bestN">
+		<div class="input-group" id="limitter">
 			<span class="input-group-addon">N = </span>
-			<input type="text" class="form-control" id="bestNform" placeholder="N to limit instances">
+			<input type="text" class="form-control" id="limitForm" placeholder="N to limit instances">
 		</div>
 		<div class="btn-group" style="margin: 9px 0 5px;" id="grpbtns">
 			<button type="button" class="btn btn-info" id="g_size">
@@ -136,53 +137,63 @@
 				Multi
 			</button>
 		</div>
+		<div class="btn-group" style="margin: 9px 0 5px;" id="xsortbtns">
+			<button type="button" class="btn btn-danger" id="xs_time">
+				Time for x264
+			</button>
+			<button type="button" class="btn btn-danger" id="xs_cost">
+				Cost for x264
+			</button>
+		</div>
 		<div class="tab-content">
-			<div class="tab-pane fade in active" id="group">
-				<div id="paravirtual_chart"></div>
-				<div id="hvm_chart"></div>
+			<div class="tab-pane fade in active" id="unixBench">
+				<div id="unixBench_chart" class="margin: 0 auto"></div>
+			</div>
+			<div class="tab-pane fade" id="x264">
+				<div id="x264_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="size">
-				<div id="size_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="size_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="type">
-				<div id="type_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="type_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="family">
-				<div id="family_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="family_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="vcpu">
-				<div id="vcpu_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="vcpu_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="memoryRange">
-				<div id="memoryRange_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="memoryRange_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="priceRange">
-				<div id="priceRange_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
-			</div>
-			<div class="tab-pane fade" id="best">
-				<div id="best_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="priceRange_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="scatterPrice">
-				<div id="scatterPrice_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="scatterPrice_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="scatterMemory">
-				<div id="scatterMemory_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="scatterMemory_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="scattervCPU">
-				<div id="scattervCPU_chart" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+				<div id="scattervCPU_chart" class="margin: 0 auto"></div>
 			</div>
-			<div class="tab-pane fade" id="">
-				<div id="" class="min-width: 600px; min-height: 800px; margin: 0 auto"></div>
+			<div class="tab-pane fade" id="group">
+				<div id="paravirtual_chart"></div>
+				<div id="hvm_chart"></div>
 			</div>
 		</div>
 		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
 		<script src="https://code.jquery.com/jquery.js"></script>
 		<!-- Include all compiled plugins (below), or include individual files as needed -->
 		<script src="//netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>
-		<script src="script/modules/taffy.js"></script>
 		<script src="//code.highcharts.com/highcharts.src.js"></script>
 		<script src="//code.highcharts.com/highcharts-more.src.js"></script>
+        <!--<script src="//code.highcharts.com/modules/data.js"></script>-->
+		<script src="//code.highcharts.com/modules/drilldown.js"></script>
 		<script src="//code.highcharts.com/modules/exporting.src.js"></script>
-		<script src="script/unixbench-visualizer.js"></script>
+		<script src="script/modules/taffy.js"></script>
+		<script src="script/benchmark-result-visualizer.js"></script>
 	</body>
 </html>

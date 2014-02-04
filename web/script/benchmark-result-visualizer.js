@@ -1,19 +1,22 @@
 /*
- unixbench-visualizer.js v0.1 (2014-01-29)
+ benchmark-result-visualizer.js v0.2 (2014-02-04)
 
  (c)2013-2014 Iori Mizutani(iomz@cisco.com)
 
  License: https://github.com/iomz/ec2-vid-benchmark/LICENSE
 
- Parse unixbench result json file to TAFFY DB and plot the figure with Highcharts.js
+ Parse benchmark json results to TaffyDB and plot the figure with Highcharts.js
  */
 var instances = TAFFY();
-var logs = TAFFY();
-var currentBestLimit = 30;
+var unixbenchs = TAFFY();
+var x264s = TAFFY();
+var clouDict = {};
+var currentLimit = 30;
 var currentTab = 'home';
 var currentTest = "index";
 var currentParallel = "multi";
 var currentSorter = "mean";
+var currentXSorter = "time";
 var currentScatter = 'price';
 var currentGroup = "vcpu";
 var colors = Highcharts.getOptions().colors;
@@ -23,6 +26,10 @@ var Sorters = {
 	"priceRatio" : "Efficiency",
 	"mean" : "Performance",
 	"price" : "Cost"
+};
+var XSorters = {
+	'time' : "Actual time elapsed",
+	'cost' : "Cost necessary to complete x264 benchmark"
 };
 var Scatters = {
 	"scatterPrice" : "price",
@@ -78,49 +85,20 @@ var TestUnits = {
 	"shell1" : "lpm",
 	"shell8" : "lpm",
 	"overhead" : "lps",
-	"index" : ""
+	"index" : "Score"
 };
 
-function drawGraph(el, title, subtitle, xaxis, rot, yaxis, tool, series) {
-	$(el).highcharts({
-		title : {
-			text : title,
-			x : -20 //center
-		},
-		subtitle : {
-			text : subtitle,
-			x : -20
-		},
-		xAxis : {
-			categories : xaxis,
-			labels : {
-				rotation : rot
-			}
-		},
-		yAxis : yaxis,
-		tooltip : tool,
-		plotOptions : {
-			column : {
-				stacking : 'normal'
-			}
-		},
-		legend : {
-			align : "left",
-			backgroundColor : '#FFF',
-			floating : true,
-			layout : "vertical",
-			verticalAlign : "top",
-			x : 150,
-			y : 50
-		},
-		series : series
-	});
-}
-
-function plotPerGroup(parallel, group, test) {
+function plotPerGroup2(parallel, group, test) {
 	$.getJSON("data/ub_" + group + "_" + test + "_" + parallel + ".json", function(d) {
 		var groupResults = TAFFY();
 		$.each(d, function(k, v) {
+			var members = v['members'];
+			var memberMeans = [];
+			for (var member in members)
+			    memberMeans.push([member, members[member]]);
+			memberMeans.sort(function(a, b) {
+				return a[1] - b[1]
+			});
 			groupResults.insert({
 				'test' : test,
 				'parallel' : v['parallel'],
@@ -129,51 +107,19 @@ function plotPerGroup(parallel, group, test) {
 				'mean' : v['mean'],
 				'num' : v['num'],
 				'cloud' : v['cloud'],
+				'members' : memberMeans
 			});
 		});
 		if (test != 'index')
-			var tname = Tests[test] + ' (' + TestUnits[test] + ')';
+			var tName = Tests[test] + ' (' + TestUnits[test] + ')';
 		else
-			var tname = Tests[test];
+			var tName = Tests[test];
 		var names = groupResults({
 			'test' : test,
 			'parallel' : parallel
 		}).order('mean').map(function(i) {
 			return i.name;
 		});
-		var ec2means = groupResults({
-			'test' : test,
-			'parallel' : parallel
-		}).order('mean').map(function(i) {
-			if (i.cloud == 'EC2') {
-				return {
-					name : i.cloud + ': ' + i.name,
-					y : parseFloat(i.mean.toFixed(2))
-				};
-			} else {
-				return {
-					name : i.cloud + ': ' + i.name,
-					y : 0
-				};
-			}
-		});
-		var rackmeans = groupResults({
-			'test' : test,
-			'parallel' : parallel
-		}).order('mean').map(function(i) {
-			if (i.cloud != 'EC2') {
-				return {
-					name : i.cloud + ': ' + i.name,
-					y : parseFloat(i.mean.toFixed(2))
-				};
-			} else {
-				return {
-					name : i.cloud + ': ' + i.name,
-					y : 0
-				};
-			}
-		});
-		var drilldowns = {};
 		var ranges = groupResults({
 			'test' : test,
 			'parallel' : parallel
@@ -186,86 +132,93 @@ function plotPerGroup(parallel, group, test) {
 		}).order('mean').map(function(i) {
 			return parseFloat(i.num.toFixed(2));
 		});
-		var yaxis = [{
-			title : {
-				text : tname
-			}
-		}, {
-			title : {
-				gridLineWidth : 0,
-				text : "Number of instances"
+
+		var members = {};
+		for (var i = 0; i < names.length; i++) {
+			var memberData = groupResults({
+				'name' : names[i]
+			}).limit(1).map(function(i) {
+				return i.members;
+			});
+			members[names[i]] = memberData[0];
+		}
+		var means = groupResults({
+			'test' : test,
+			'parallel' : parallel
+		}).order('mean').map(function(i) {
+			return {
+				name : i.name,
+				y : parseFloat(i.mean.toFixed(2)),
+				drilldown : i.name
+			};
+		});
+		var drilldownSeries = [];
+		$.each(members, function(key, value) {
+			drilldownSeries.push({
+				name : key,
+				id : key,
+				data : value
+			});
+		});
+        var el = "#" + group + "_chart";
+		$(el).highcharts({
+			chart : {
+				type : 'column'
 			},
-			opposite : true
-		}];
-		var tool = {
-			shared : true
-		};
-		var series = [{
-			name : 'Min-Max range',
-			type : 'arearange',
-			yAxis : 0,
-			data : ranges
-		}, {
-			color : colors[6],
-			name : 'EC2 ' + tname,
-			type : 'column',
-			yAxis : 0,
-			data : ec2means,
-            drilldown : true
-		}, {
-			color : colors[5],
-			name : 'Rackspace ' + tname,
-			type : 'column',
-			yAxis : 0,
-			data : rackmeans,
-            drilldown : true
-		}, {
-			color : colors[1],
-			name : 'Number of instances',
-			type : 'line',
-			yAxis : 1,
-			data : nums
-		}];
-		$("#" + group + "_chart").highcharts({
 			title : {
-				text : Tests[test] + ' (' + parallel + ')',
-				x : -20 //center
+				text : Tests[test] + ' (' + parallel + ')'
 			},
 			subtitle : {
-				text : 'Grouped by ' + Specs[group],
-				x : -20
+				text : 'Grouped by ' + Specs[group]
 			},
 			xAxis : {
-				categories : names,
-				labels : {
-					rotation : 0
-				}
+				type : 'category'
 			},
-			yAxis : yaxis,
-			tooltip : tool,
+			yAxis : [{
+				title : {
+					text : tName
+				}
+			}, {
+				title : {
+					gridLineWidth : 0,
+					text : "Number of instances"
+				},
+				opposite : true
+			}],
+			tooltip : {
+				shared : true
+			},
 			plotOptions : {
-				column : {
-					stacking : 'normal'
+				series : {
+					borderWidth : 0,
 				}
 			},
-			legend : {
-				align : "left",
-				backgroundColor : '#FFF',
-				floating : true,
-				layout : "vertical",
-				verticalAlign : "top",
-				x : 150,
-				y : 50
-			},
-			series : series,
-		    drilldown : {
-		    	series : []
-		    }
+			series : [{
+                colorByPoint: true,
+				name : tName,
+				yAxis : 0,
+				data : means
+			}],
+			drilldown : {
+				series : drilldownSeries
+			}
 		});
-
-		$("#" + group + "_chart").highcharts().setSize(900, 600);
+	    $(el).highcharts().setSize(1000, 600);
 	});
 }
+
+/*{
+ name : 'Min-Max range',
+ type : 'arearange',
+ yAxis : 0,
+ data : ranges
+ },{
+ color : colors[1],
+ name : 'Number of instances',
+ type : 'line',
+ yAxis : 1,
+ data : nums
+ }*/
 
 function plotGroupVariations(sorter) {
 	var virt = {
@@ -377,8 +330,6 @@ function plotGroupVariations(sorter) {
 				color : color_dict[i.vcpu]
 			};
 		});
-
-		// Create the chart
 		$('#' + v + "_chart").highcharts({
 			chart : {
 				type : 'pie'
@@ -418,58 +369,40 @@ function plotGroupVariations(sorter) {
 	}
 }
 
-function plotBest(parallel, test, sorter, bestLimit) {
+function plotUnixBenchs(parallel, test, sorter, limit) {
 	if (test != 'index')
-		var tname = Tests[test] + ' (' + TestUnits[test] + ')';
+		var tName = Tests[test] + ' (' + TestUnits[test] + ')';
 	else
-		var tname = Tests[test];
+		var tName = Tests[test];
 	var order = " desc"
-
-	var names = logs({
+	var names = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
+	}).order(sorter + order).limit(limit).map(function(i) {
 		return i.name;
 	});
-
-	var ec2means = logs({
+	var ec2means = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
-		if (i.cloud == 'EC2') {
-			return {
-				name : i.cloud + ': ' + i.name,
-				y : parseFloat(i.mean.toFixed(2))
-			};
-		} else {
-			return {
-				name : i.cloud + ': ' + i.name,
-				y : 0
-			};
-		}
+	}).order(sorter + order).limit(limit).map(function(i) {
+		return {
+			name : i.cloud + ': ' + i.name,
+			y : (i.cloud == 'EC2') ? parseFloat(i.mean.toFixed(2)) : 0
+		};
 	});
-
-	var rackmeans = logs({
+	var rackmeans = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
-		if (i.cloud != 'EC2') {
-			return {
-				name : i.cloud + ': ' + i.name,
-				y : parseFloat(i.mean.toFixed(2))
-			};
-		} else {
-			return {
-				name : i.cloud + ': ' + i.name,
-				y : 0
-			};
-		}
+	}).order(sorter + order).limit(limit).map(function(i) {
+		return {
+			name : i.cloud + ': ' + i.name,
+			y : (i.cloud == 'Rackspace') ? parseFloat(i.mean.toFixed(2)) : 0
+		};
 	});
-
-	var sds = logs({
+	var sds = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
+	}).order(sorter + order).limit(limit).map(function(i) {
 		var low = (i.mean - i.sd).toFixed(2);
 		var high = (i.mean + i.sd).toFixed(2);
 		return {
@@ -478,29 +411,17 @@ function plotBest(parallel, test, sorter, bestLimit) {
 			name : i.cloud + ': ' + i.name
 		};
 	});
-
-	var priceRatios = logs({
+	var priceRatios = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
+	}).order(sorter + order).limit(limit).map(function(i) {
 		/*return i.mean/(i.price*100);*/
 		return {
 			name : i.cloud + ': ' + i.name,
 			y : parseFloat(i.priceRatio.toFixed(2))
 		};
 	});
-
-	var prices = logs({
-		'test' : test,
-		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
-		return {
-			name : i.cloud + ': ' + i.name,
-			y : i.price
-		};
-	});
-
-	var means = logs({
+	var means = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
 	}).map(function(i) {
@@ -518,47 +439,19 @@ function plotBest(parallel, test, sorter, bestLimit) {
 	mean = parseFloat(mean.toFixed(2));
 	for ( i = 0; i < names.length; i++)
 		means.push(mean);
-
-	var zscores = logs({
+	var zscores = unixbenchs({
 		'test' : test,
 		'parallel' : parallel
-	}).order(sorter + order).limit(bestLimit).map(function(i) {
+	}).order(sorter + order).limit(limit).map(function(i) {
 		return parseFloat(((i.mean - mean) / std).toFixed(2));
 	});
-
 	// Reverse the order to show the plot collectly
 	names.reverse();
 	sds.reverse();
 	ec2means.reverse();
 	rackmeans.reverse();
 	priceRatios.reverse();
-	prices.reverse();
 	zscores.reverse();
-
-	var yaxis = [{
-		title : {
-			text : tname
-		}
-	}, {
-		title : {
-			text : tname + '/(100*' + Specs['price'] + ')'
-		},
-		opposite : true
-	}, {
-		title : {
-			text : Specs['price']
-		},
-		opposite : true
-	}, {
-		title : {
-			text : 'Z Score'
-		}
-	}];
-
-	var tool = {
-		shared : true
-	};
-
 	var series = [{
 		color : colors[2],
 		name : 'Standard Deviation',
@@ -567,28 +460,22 @@ function plotBest(parallel, test, sorter, bestLimit) {
 		data : sds
 	}, {
 		color : colors[6],
-		name : 'EC2 ' + tname,
+		name : 'EC2 ' + tName,
 		type : 'column',
 		yAxis : 0,
 		data : ec2means
 	}, {
 		color : colors[5],
-		name : 'Rackspace ' + tname,
+		name : 'Rackspace ' + tName,
 		type : 'column',
 		yAxis : 0,
 		data : rackmeans
 	}, {
 		color : colors[4],
-		name : tname + '/(100*' + Specs['price'] + ')',
+		name : 'Efficiency [' + TestUnits[test] + '/100*$/Hr]',
 		type : 'line',
 		yAxis : 1,
 		data : priceRatios
-	}, {
-		color : colors[7],
-		name : Specs['price'],
-		type : 'line',
-		yAxis : 2,
-		data : prices
 	}, {
 		color : colors[3],
 		name : 'Mean',
@@ -602,16 +489,62 @@ function plotBest(parallel, test, sorter, bestLimit) {
 		color : colors[8],
 		name : 'Z Score',
 		type : 'line',
-		yAxis : 3,
+		yAxis : 2,
 		data : zscores
 	}];
-	//drawGraph(el, title, subtitle, xaxis, yaxis, yunit, series)
-	drawGraph("#best_chart", 'Best ' + bestLimit + ' ' + Tests[test] + 's (' + parallel + ')', 'Sorted by ' + Sorters[sorter], names, 45, yaxis, tool, series);
-	$("#best_chart").highcharts().setSize(1200, 700);
+	$("#unixBench_chart").highcharts({
+		title : {
+			text : 'Best ' + limit + ' ' + Tests[test] + ' (' + parallel + ')',
+			x : -20 //center
+		},
+		subtitle : {
+			text : 'Sorted by ' + Sorters[sorter],
+			x : -20
+		},
+		xAxis : {
+			categories : names,
+			labels : {
+				rotation : 45
+			}
+		},
+		yAxis : [{
+			title : {
+				text : tName
+			}
+		}, {
+			title : {
+				text : tName + '/(100*' + Specs['price'] + ')'
+			},
+			opposite : true
+		}, {
+			title : {
+				text : 'Z Score'
+			}
+		}],
+		tooltip : {
+			shared : true
+		},
+		plotOptions : {
+			column : {
+				stacking : 'normal'
+			}
+		},
+		legend : {
+			align : "left",
+			backgroundColor : '#FFF',
+			floating : true,
+			layout : "vertical",
+			verticalAlign : "top",
+			x : 150,
+			y : 50
+		},
+		series : series
+	});
+	$("#unixBench_chart").highcharts().setSize(1000, 600);
 }
 
 function plotScatter(parallel, test, scatter) {
-	var ec2paravirtuals = logs({
+	var ec2paravirtuals = unixbenchs({
 		test : test,
 		parallel : parallel,
 		name : {
@@ -631,8 +564,7 @@ function plotScatter(parallel, test, scatter) {
 			y : parseFloat(i.mean.toFixed(2))
 		};
 	});
-
-	var rackparavirtuals = logs({
+	var rackparavirtuals = unixbenchs({
 		test : test,
 		parallel : parallel,
 		name : {
@@ -652,8 +584,7 @@ function plotScatter(parallel, test, scatter) {
 			y : parseFloat(i.mean.toFixed(2))
 		};
 	});
-
-	var hvms = logs({
+	var hvms = unixbenchs({
 		test : test,
 		parallel : parallel,
 		name : {
@@ -672,7 +603,6 @@ function plotScatter(parallel, test, scatter) {
 			y : parseFloat(i.mean.toFixed(2))
 		};
 	});
-
 	$('#' + currentTab + '_chart').highcharts({
 		chart : {
 			type : 'scatter',
@@ -746,37 +676,122 @@ function plotScatter(parallel, test, scatter) {
 			data : hvms
 		}]
 	});
-	$('#' + currentTab + '_chart').highcharts().setSize(900, 600);
+	$('#' + currentTab + '_chart').highcharts().setSize(1000, 600);
+}
+
+function plotx264(sorter, limit) {
+	var names = x264s().order(sorter).limit(limit).map(function(i) {
+		return i.name;
+	});
+	var ec2times = x264s().order(sorter).limit(limit).map(function(i) {
+		var time = (i.cloud == 'EC2') ? i.time : 0;
+		return parseFloat(time.toFixed(2));
+	});
+	var racktimes = x264s().order(sorter).limit(limit).map(function(i) {
+		var time = (i.cloud == 'Rackspace') ? i.time : 0;
+		return parseFloat(time.toFixed(2));
+	});
+	var costs = x264s().order(sorter).limit(limit).map(function(i) {
+		return parseFloat(i.cost.toFixed(2));
+	});
+	names.reverse();
+	ec2times.reverse();
+	racktimes.reverse();
+	costs.reverse();
+	$('#x264_chart').highcharts({
+		title : {
+			text : 'Best ' + limit + ' x264 benchmark on AWS EC2 and Rackspace'
+		},
+		subtitle : {
+			text : 'Sorted by ' + XSorters[sorter]
+		},
+		xAxis : {
+			categories : names,
+			labels : {
+				rotation : 45
+			}
+		},
+		yAxis : [{
+			title : {
+				text : "Time of encoding (second)"
+			}
+		}, {
+			title : {
+				text : "Cost of encoding ($)"
+			},
+			opposite : true
+		}],
+		legend : {
+			layout : 'vertical',
+			align : 'left',
+			x : 420,
+			verticalAlign : 'top',
+			y : 80,
+			floating : true,
+			backgroundColor : '#FFFFFF'
+		},
+		plotOptions : {
+			column : {
+				stacking : 'normal'
+			}
+		},
+		tooltip : {
+			shared : true
+		},
+		series : [{
+			color : colors[6],
+			name : 'EC2: Time of encoding',
+			type : 'column',
+			yAxis : 0,
+			tooltip : {
+				valueSuffix : ' s'
+			},
+			data : ec2times
+		}, {
+			color : colors[5],
+			name : 'Rackspace: Time of encoding',
+			type : 'column',
+			yAxis : 0,
+			tooltip : {
+				valueSuffix : ' s'
+			},
+			data : racktimes
+		}, {
+			color : colors[4],
+			name : 'Encoding Cost',
+			type : 'line',
+			yAxis : 1,
+			tooltip : {
+				valuePrefix : '$'
+			},
+			data : costs
+		}]
+	});
+	$('#x264_chart').highcharts().setSize(1000, 600);
 }
 
 function replot() {
 	if (-1 < Groups.indexOf(currentTab)) {
 		currentGroup = currentTab;
-		plotPerGroup(currentParallel, currentGroup, currentTest);
+		plotPerGroup2(currentParallel, currentGroup, currentTest);
 	} else if ( currentTab in Scatters) {
 		currentScatter = Scatters[currentTab];
 		plotScatter(currentParallel, currentTest, currentScatter);
-	} else if (currentTab == 'best') {
-		plotBest(currentParallel, currentTest, currentSorter, currentBestLimit);
+	} else if (currentTab == 'unixBench') {
+		plotUnixBenchs(currentParallel, currentTest, currentSorter, currentLimit);
 	}
 }
 
 $(function() {
-	$('#bestN').hide();
-	$('#testbtns').hide();
-	$('#sortbtns').hide();
-	$('#parallelbtns').hide();
-	$.getJSON("data/instances.json", function(d) {
-		$.each(d, function(k, v) {
-			//document.getElementById("debug").innerHTML += k + "<br>";
-			instances.insert(v);
-		});
-		//plotInstances('price');
-		plotGroupVariations(currentGroup);
-	});
+    $('#limitter').show();
+    $('#grpbtns').hide();
+    $('#testbtns').show();
+    $('#sortbtns').show();
+    $('#parallelbtns').show();
+    $('#xsortbtns').hide();
 	$.getJSON("data/unixbench.json", function(d) {
 		$.each(d, function(k, v) {
-			logs.insert({
+			unixbenchs.insert({
 				test : v['test'],
 				mean : v['mean'],
 				name : v['name'],
@@ -789,59 +804,102 @@ $(function() {
 				vcpu : v['vcpu']
 			});
 		});
+	    plotUnixBenchs(currentParallel, currentTest, currentSorter, currentLimit);
+	});
+	$.getJSON("data/instances.json", function(d) {
+		$.each(d, function(k, v) {
+			instances.insert(v);
+		});
+        var cloudNames = instances().map(function(i){
+            return [i.name, i.cloud];
+        });
+        for (var i=0; i<cloudNames.length; i++)
+            clouDict[cloudNames[i][0]] = cloudNames[i][1];
+	});
+	$.getJSON("data/x264result_new.json", function(d) {
+		$.each(d, function(k, v) {
+			x264s.insert({
+				name : k,
+				cloud : v['cloud'],
+				memory : v['memory'],
+				vcpu : v['vcpu'],
+				price : v['price'],
+				time : v['time'],
+				cost : v['cost']
+			});
+		});
 	});
 });
 
 $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
-	currentTab = e.target.href.match(/(\w+)$/g)[0];
 	// activated tab
+	currentTab = e.target.href.match(/(\w+)$/g)[0];
 	if (-1 < Groups.indexOf(currentTab)) {
-		currentGroup = currentTab
-		plotPerGroup(currentParallel, currentGroup, currentTest);
-		// If in the group tabs
-		$('#bestN').hide();
+	    // If in the group tabs
+		$('#limitter').hide();
 		$('#grpbtns').hide();
 		$('#testbtns').show();
 		$('#sortbtns').hide();
 		$('#parallelbtns').show();
-	} else if (currentTab == 'best') {
-		plotBest(currentParallel, currentTest, currentSorter, currentBestLimit);
+		$('#xsortbtns').hide();
+		currentGroup = currentTab
+		plotPerGroup2(currentParallel, currentGroup, currentTest);
+	} else if (currentTab == 'unixBench') {
 		// If in the Best 30s tab
-		$('#bestN').show();
+		$('#limitter').show();
 		$('#grpbtns').hide();
 		$('#testbtns').show();
 		$('#sortbtns').show();
 		$('#parallelbtns').show();
+		$('#xsortbtns').hide();
+		plotUnixBenchs(currentParallel, currentTest, currentSorter, currentLimit);
+	} else if (currentTab == 'x264') {
+        // If in the x264 tab
+		$('#limitter').show();
+		$('#grpbtns').hide();
+		$('#testbtns').hide();
+		$('#sortbtns').hide();
+		$('#parallelbtns').hide();
+		$('#xsortbtns').show();
+		plotx264(currentXSorter, currentLimit);
 	} else if ( currentTab in Scatters) {
-		currentScatter = Scatters[currentTab];
-		plotScatter(currentParallel, currentTest, currentScatter);
 		// If in the scatter tabs
-		$('#bestN').hide();
+		$('#limitter').hide();
 		$('#grpbtns').hide();
 		$('#testbtns').show();
 		$('#sortbtns').hide();
 		$('#parallelbtns').show();
+		$('#xsortbtns').hide();
+		currentScatter = Scatters[currentTab];
+		plotScatter(currentParallel, currentTest, currentScatter);
 	} else {// If in the Home tab
-		plotGroupVariations(currentGroup);
-		$('#bestN').hide();
+		$('#limitter').hide();
 		$('#grpbtns').show();
 		$('#testbtns').hide();
 		$('#sortbtns').hide();
 		$('#parallelbtns').hide();
+		$('#xsortbtns').hide();
+		plotGroupVariations(currentGroup);
 	}
 	//e.relatedTarget; // previous tab
 });
 
-$('#bestNform').keypress(function(e) {
+// Input from to limit N
+$('#limitForm').keypress(function(e) {
 	if (e.which == 13) {
-		currentBestLimit = parseInt($('#bestNform').prop('value'));
-		if (currentBestLimit === parseInt(currentBestLimit))
-			plotBest(currentParallel, currentTest, currentSorter, currentBestLimit);
-		else
-			currentBestLimit = 30;
+		currentLimit = parseInt($('#limitForm').prop('value'));
+		if (!(currentLimit === parseInt(currentLimit))) {
+			currentLimit = 30;
+		}
+		if (currentTab == 'x264') {
+			plotx264(currentXSorter, currentLimit);
+		} else {
+			plotUnixBenchs(currentParallel, currentTest, currentSorter, currentLimit);
+		}
 	}
 });
 
+// Group buttons
 $('#g_size').on('click', function(e) {
 	currentGroup = 'size';
 	plotGroupVariations(currentGroup);
@@ -867,6 +925,7 @@ $('#g_priceRange').on('click', function(e) {
 	plotGroupVariations(currentGroup);
 });
 
+// Sorting buttons
 $('#s_priceRatio').on('click', function(e) {
 	currentSorter = 'priceRatio';
 	replot();
@@ -885,6 +944,7 @@ $('#p_multi').on('click', function(e) {
 	replot();
 });
 
+// Test buttons
 $('#index').on('click', function(e) {
 	currentTest = 'index';
 	replot();
@@ -936,4 +996,14 @@ $('#shell8').on('click', function(e) {
 $('#overhead').on('click', function(e) {
 	currentTest = 'overhead';
 	replot();
+});
+
+// X264 sorting buttons
+$('#xs_time').on('click', function(e) {
+	currentXSorter = 'time';
+	plotx264(currentXSorter, currentLimit);
+});
+$('#xs_cost').on('click', function(e) {
+	currentXSorter = 'cost';
+	plotx264(currentXSorter, currentLimit);
 });

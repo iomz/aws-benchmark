@@ -7,15 +7,15 @@
 
  Parse benchmark json results to TaffyDB and plot the figure with Highcharts.js
  */
-var instances = TAFFY();
-var unixbenchs = TAFFY();
 var x264s = TAFFY();
+var instances = null;
+var unixbenchs = null;
 var currentLimit = 30;
-var currentTab = 'home';
-var currentTest = "index";
+var currentTab = 'x264';
+var currentTest = "x264";
 var currentParallel = "multi";
 var currentSorter = "mean";
-var currentXSorter = "time";
+var currentXSorter = "pole";
 var currentScatter = 'price';
 var currentGroup = "vcpu";
 var colors = Highcharts.getOptions().colors;
@@ -28,7 +28,8 @@ var Sorters = {
 };
 var XSorters = {
 	'time' : "Actual time elapsed",
-	'cost' : "Cost necessary to complete x264 benchmark"
+	'cost' : "Cost necessary to complete x264 benchmark",
+	'pole' : "The sum of Z Score of time and cost"
 };
 var Scatters = {
 	"scatterPrice" : "price",
@@ -89,12 +90,12 @@ var TestUnits = {
 	"x264" : "s"
 };
 
-function plotPerGroup(parallel, group, test, xsorter) {
+function plotPerGroup(group, test, xsorter) {
 	if (test == 'x264') {
 		var groupDataFile = "data/" + group + "_" + test + "_" + xsorter + ".json";
 		var ysorter = ' desc';
 	} else {
-		var groupDataFile = "data/" + group + "_" + test + "_" + parallel + ".json";
+		var groupDataFile = "data/" + group + "_" + test + ".json";
 		var ysorter = '';
 	}
 	$.getJSON(groupDataFile, function(d) {
@@ -164,7 +165,7 @@ function plotPerGroup(parallel, group, test, xsorter) {
 				type : 'column'
 			},
 			title : {
-				text : Tests[test] + ' (' + parallel + ')'
+				text : Tests[test]
 			},
 			subtitle : {
 				text : subTitle
@@ -490,6 +491,11 @@ function plotUnixBenchs(parallel, test, sorter, limit) {
 		data : rackmeans
 	}, {
 		color : colors[2],
+		name : 'Error in ' + tName,
+		yAxis : 0,
+		data : null
+	}, {
+		color : colors[2],
 		name : tName + ' error',
 		type : 'errorbar',
 		yAxis : 0,
@@ -500,22 +506,24 @@ function plotUnixBenchs(parallel, test, sorter, limit) {
 		type : 'line',
 		yAxis : 1,
 		data : priceRatios
-	}, {
-		color : colors[3],
-		name : 'Mean',
-		type : 'line',
-		yAxis : 0,
-		data : means,
-		marker : {
-			enabled : false
-		}
-	}, {
-		color : colors[8],
-		name : 'Z Score',
-		type : 'line',
-		yAxis : 2,
-		data : zscores
-	}];
+	}
+	/*, {
+	 color : colors[3],
+	 name : 'Mean',
+	 type : 'line',
+	 yAxis : 0,
+	 data : means,
+	 marker : {
+	 enabled : false
+	 }
+	 }, {
+	 color : colors[8],
+	 name : 'Z Score',
+	 type : 'line',
+	 yAxis : 2,
+	 data : zscores
+	 }*/
+	];
 	$("#unixBench_chart").highcharts({
 		title : {
 			text : 'Best ' + limit + ' ' + Tests[test] + ' (' + parallel + ')',
@@ -540,10 +548,6 @@ function plotUnixBenchs(parallel, test, sorter, limit) {
 				text : tName + '/(100*' + Specs['price'] + ')'
 			},
 			opposite : true
-		}, {
-			title : {
-				text : 'Z Score'
-			}
 		}],
 		tooltip : {
 			shared : true
@@ -570,66 +574,140 @@ function plotUnixBenchs(parallel, test, sorter, limit) {
 	$("#unixBench_chart").highcharts().setSize(1000, 600);
 }
 
-function plotScatter(parallel, test, scatter) {
-	var ec2paravirtuals = unixbenchs({
-		test : test,
-		parallel : parallel,
-		name : {
-			like : 'paravirtual'
-		},
-		cloud : 'EC2'
-	}).map(function(i) {
-		if (scatter == 'price')
-			var val = i.price;
-		else if (scatter == 'memory')
-			var val = i.memory;
-		else if (scatter == 'vcpu')
-			var val = i.vcpu;
-		return {
-			name : i.name,
-			x : val,
-			y : parseFloat(i.mean.toFixed(2))
-		};
-	});
-	var rackparavirtuals = unixbenchs({
-		test : test,
-		parallel : parallel,
-		name : {
-			like : 'paravirtual'
-		},
-		cloud : 'Rackspace'
-	}).map(function(i) {
-		if (scatter == 'price')
-			var val = i.price;
-		else if (scatter == 'memory')
-			var val = i.memory;
-		else if (scatter == 'vcpu')
-			var val = i.vcpu;
-		return {
-			name : i.name,
-			x : val,
-			y : parseFloat(i.mean.toFixed(2))
-		};
-	});
-	var hvms = unixbenchs({
-		test : test,
-		parallel : parallel,
-		name : {
-			like : 'hvm'
-		}
-	}).map(function(i) {
-		if (scatter == 'price')
-			var val = i.price;
-		else if (scatter == 'memory')
-			var val = i.memory;
-		else if (scatter == 'vcpu')
-			var val = i.vcpu;
-		return {
-			name : i.name,
-			x : val,
-			y : parseFloat(i.mean.toFixed(2))
-		};
-	});
+function plotScatter(parallel, test, scatter, xsorter) {
+	if (test != 'x264') {
+		var ec2paravirtuals = unixbenchs({
+			test : test,
+			parallel : parallel,
+			name : {
+				like : 'paravirtual'
+			},
+			cloud : 'EC2'
+		}).map(function(i) {
+			if (scatter == 'price')
+				var val = i.price;
+			else if (scatter == 'memory')
+				var val = i.memory;
+			else if (scatter == 'vcpu')
+				var val = i.vcpu;
+			return {
+				name : i.name,
+				x : val,
+				y : parseFloat(i.mean.toFixed(2))
+			};
+		});
+		var rackparavirtuals = unixbenchs({
+			test : test,
+			parallel : parallel,
+			name : {
+				like : 'paravirtual'
+			},
+			cloud : 'Rackspace'
+		}).map(function(i) {
+			if (scatter == 'price')
+				var val = i.price;
+			else if (scatter == 'memory')
+				var val = i.memory;
+			else if (scatter == 'vcpu')
+				var val = i.vcpu;
+			return {
+				name : i.name,
+				x : val,
+				y : parseFloat(i.mean.toFixed(2))
+			};
+		});
+		var hvms = unixbenchs({
+			test : test,
+			parallel : parallel,
+			name : {
+				like : 'hvm'
+			}
+		}).map(function(i) {
+			if (scatter == 'price')
+				var val = i.price;
+			else if (scatter == 'memory')
+				var val = i.memory;
+			else if (scatter == 'vcpu')
+				var val = i.vcpu;
+			return {
+				name : i.name,
+				x : val,
+				y : parseFloat(i.mean.toFixed(2))
+			};
+		});
+	} else {
+		var ec2paravirtuals = x264s({
+			name : {
+				like : 'paravirtual'
+			},
+			cloud : 'EC2'
+		}).map(function(i) {
+			if (scatter == 'price')
+				var val = i.price;
+			else if (scatter == 'memory')
+				var val = i.memory;
+			else if (scatter == 'vcpu')
+				var val = i.vcpu;
+			if (xsorter == 'time')
+				var y = i.time;
+			else if (xsorter == 'cost')
+				var y = i.cost;
+			else if (xsorter == 'pole')
+				var y = i.pole;
+			return {
+				name : i.name,
+				x : val,
+				y : parseFloat((1 / y).toFixed(2))
+			};
+		});
+		var rackparavirtuals = x264s({
+			name : {
+				like : 'paravirtual'
+			},
+			cloud : 'Rackspace'
+		}).map(function(i) {
+			if (scatter == 'price')
+				var val = i.price;
+			else if (scatter == 'memory')
+				var val = i.memory;
+			else if (scatter == 'vcpu')
+				var val = i.vcpu;
+			if (xsorter == 'time')
+				var y = i.time;
+			else if (xsorter == 'cost')
+				var y = i.cost;
+			else if (xsorter == 'pole')
+				var y = i.pole;
+			return {
+				name : i.name,
+				x : val,
+				y : parseFloat((1 / y).toFixed(2))
+			};
+		});
+		var hvms = x264s({
+			name : {
+				like : 'hvm'
+			}
+		}).map(function(i) {
+			if (scatter == 'price')
+				var val = i.price;
+			else if (scatter == 'memory')
+				var val = i.memory;
+			else if (scatter == 'vcpu')
+				var val = i.vcpu;
+			if (xsorter == 'time')
+				var y = i.time;
+			else if (xsorter == 'cost')
+				var y = i.cost;
+			else if (xsorter == 'pole')
+				var y = i.pole;
+			return {
+				name : i.name,
+				x : val,
+				y : parseFloat((1 / y).toFixed(2))
+			};
+		});
+	}
 	$('#' + currentTab + '_chart').highcharts({
 		chart : {
 			type : 'scatter',
@@ -637,9 +715,6 @@ function plotScatter(parallel, test, scatter) {
 		},
 		title : {
 			text : Tests[test] + ' vs ' + Specs[scatter]
-		},
-		subtitle : {
-			text : 'Showing ' + parallel + ' process results'
 		},
 		xAxis : {
 			title : {
@@ -652,7 +727,7 @@ function plotScatter(parallel, test, scatter) {
 		},
 		yAxis : {
 			title : {
-				text : Tests[test]
+				text : Tests[test] + ' (' + TestUnits[test] + ')'
 			}
 		},
 		legend : {
@@ -707,6 +782,181 @@ function plotScatter(parallel, test, scatter) {
 }
 
 function plotx264(sorter, limit) {
+	if (sorter == 'time') {
+		var line1Name = 'Encodin Cost ($)';
+		var line2Name = 'Balanced Score';
+		var colName = 'Encoding Time (s)';
+		var titleSuffix = 'in Performance';
+	} else if (sorter == 'cost') {
+		var line1Name = 'Encoding Time (s)';
+		var line2Name = 'Time Ratio Compared with the least';
+		var colName = 'Encodin Cost ($)';
+		var titleSuffix = 'in Cost';
+	} else {
+		var line1Name = 'Encodin Cost ($)';
+		var line2Name = 'Encoding Time (s)';
+		var colName = 'Balanced Score';
+		var titleSuffix = 'in Balance';
+	}
+	var ec2ColName = 'EC2: ' + colName;
+	var rackColName = 'Rack: ' + colName;
+	var names = x264s().order(sorter).limit(limit).map(function(i) {
+		return i.name;
+	});
+	var line1 = x264s().order(sorter).limit(limit).map(function(i) {
+		if (sorter == 'time') {
+			var val = i.cost;
+		} else if (sorter == 'cost') {
+			var val = i.time;
+		} else {
+			var val = i.costZ;
+		}
+		return parseFloat(val.toFixed(2));
+	});
+    var minTime = x264s().order('time').limit(1).map(function(i) {
+        return i.time;
+    })[0];
+	var line2 = x264s().order(sorter).limit(limit).map(function(i) {
+		if (sorter == 'time') {
+			var val = i.pole;
+		} else if (sorter == 'cost') {
+			var val = i.time/minTime;
+		} else {
+			var val = i.timeZ;
+		}
+		return parseFloat(val.toFixed(2));
+	});
+	var ec2Col = x264s().order(sorter).limit(limit).map(function(i) {
+		if (sorter == 'time') {
+			var val = i.time;
+		} else if (sorter == 'cost') {
+			var val = i.cost;
+		} else {
+			var val = i.pole;
+		}
+		return (i.cloud == 'EC2') ? parseFloat(val.toFixed(2)) : 0;
+	});
+	var rackCol = x264s().order(sorter).limit(limit).map(function(i) {
+		if (sorter == 'time') {
+			var val = i.time;
+		} else if (sorter == 'cost') {
+			var val = i.cost;
+		} else {
+			var val = i.pole;
+		}
+		return (i.cloud == 'Rackspace') ? parseFloat(val.toFixed(2)) : 0;
+	});
+	var series = [{
+		color : colors[6],
+		name : ec2ColName,
+		type : 'column',
+		yAxis : 0,
+		data : ec2Col
+	}, {
+		color : colors[5],
+		name : rackColName,
+		type : 'column',
+		yAxis : 0,
+		data : rackCol
+	}, {
+		color : colors[3],
+		name : line1Name,
+		type : 'line',
+		yAxis : 1,
+		data : line1
+	}, {
+		color : colors[4],
+		name : line2Name,
+		type : 'line',
+		yAxis : 2,
+		data : line2
+	}];
+	names.reverse();
+	line1.reverse();
+	line2.reverse();
+	ec2Col.reverse();
+	rackCol.reverse();
+	/* If available, plot the SD for the cols */
+	if (sorter != 'pole') {
+		var sds = x264s().order(sorter).limit(limit).map(function(i) {
+			if (sorter == 'time') {
+				var mean = i.time;
+				var sd = i.timeSd;
+			} else {
+				var mean = i.cost;
+				var sd = i.costSd;
+			}
+			var low = (mean - sd).toFixed(2);
+			var high = (mean + sd).toFixed(2);
+			return [parseFloat(low), parseFloat(high)];
+		});
+		sds.reverse();
+		series.push({
+			color : colors[2],
+			name : 'Error in ' + colName,
+			yAxis : 0,
+			data : null
+
+		});
+		series.push({
+			color : colors[2],
+			name : 'Error in ' + colName,
+			type : 'errorbar',
+			yAxis : 0,
+			data : sds
+		});
+	}
+	$('#x264_chart').highcharts({
+		title : {
+			text : 'Best ' + limit + ' x264 Encoding ' + titleSuffix
+		},
+		xAxis : {
+			categories : names,
+			labels : {
+				rotation : 45
+			}
+		},
+		yAxis : [{
+			title : {
+				text : colName
+			}
+		}, {
+			title : {
+				text : line1Name
+			},
+			opposite : true
+		}, {
+			title : {
+				text : line2Name
+			},
+			opposite : true
+		}],
+		legend : {
+			layout : 'vertical',
+			align : 'left',
+			x : 420,
+			verticalAlign : 'top',
+			y : 80,
+			floating : true,
+			backgroundColor : '#FFFFFF'
+		},
+		plotOptions : {
+			column : {
+				stacking : 'normal'
+			},
+			errorbar : {
+				lineWidth : 3
+			}
+		},
+		tooltip : {
+			shared : true
+		},
+		series : series
+	});
+	$('#x264_chart').highcharts().setSize(1000, 600);
+}
+
+function plotx264Ratio(sorter, limit) {
 	var names = x264s().order(sorter).limit(limit).map(function(i) {
 		return i.name;
 	});
@@ -718,35 +968,39 @@ function plotx264(sorter, limit) {
 		var time = (i.cloud == 'Rackspace') ? i.time : 0;
 		return parseFloat(time.toFixed(2));
 	});
+	var timeMin = x264s().order('time').limit(1).map(function(i) {
+	return i.time;
+	})[0];
+	var timeRatios = x264s().order(sorter).limit(limit).map(function(i) {
+		return parseFloat((i.time / timeMin).toFixed(2));
+	});
 	var costs = x264s().order(sorter).limit(limit).map(function(i) {
 		return parseFloat(i.cost.toFixed(2));
 	});
-	var timeMeans = x264s().map(function(i) {
-		return parseFloat(i.time.toFixed(2));
+	var costMin = x264s().order('cost').limit(1).map(function(i) {
+	return i.cost;
+	})[0];
+	var costRatios = x264s().order(sorter).limit(limit).map(function(i) {
+		return parseFloat((i.cost / costMin).toFixed(2));
 	});
-	var sum = 0;
-	for (var i = 0; i < timeMeans.length; i++)
-		sum += timeMeans[i];
-	var timeMean = sum / timeMeans.length;
-	var mean = parseFloat(timeMean.toFixed(2));
-	timeMeans = [];
-	for ( i = 0; i < names.length; i++)
-		timeMeans.push(mean);
-	var costMeans = x264s().map(function(i) {
-		return parseFloat(i.cost.toFixed(2));
+	var timeZs = x264s().order(sorter).limit(limit).map(function(i) {
+		return parseFloat((i.timeZ).toFixed(2));
 	});
-	sum = 0;
-	for (var i = 0; i < costMeans.length; i++)
-		sum += costMeans[i];
-	var costMean = sum / costMeans.length;
-	var mean = parseFloat(costMean.toFixed(2));
-	costMeans = [];
-	for ( i = 0; i < names.length; i++)
-		costMeans.push(mean);
+	var costZs = x264s().order(sorter).limit(limit).map(function(i) {
+		return parseFloat((i.costZ).toFixed(2));
+	});
+	var poles = x264s().order(sorter).limit(limit).map(function(i) {
+		return parseFloat((i.pole).toFixed(2));
+	});
 	names.reverse();
 	ec2times.reverse();
 	racktimes.reverse();
+	timeRatios.reverse();
 	costs.reverse();
+	costRatios.reverse();
+	timeZs.reverse();
+	costZs.reverse();
+	poles.reverse();
 	$('#x264_chart').highcharts({
 		title : {
 			text : 'Best ' + limit + ' x264 benchmark on AWS EC2 and Rackspace'
@@ -769,6 +1023,15 @@ function plotx264(sorter, limit) {
 				text : "Cost of encoding ($)"
 			},
 			opposite : true
+		}, {
+			title : {
+				text : "Divided by Minimum)"
+			},
+			opposite : true
+		}, {
+			title : {
+				text : "Z Scores"
+			}
 		}],
 		legend : {
 			layout : 'vertical',
@@ -785,64 +1048,104 @@ function plotx264(sorter, limit) {
 			}
 		},
 		tooltip : {
+			floating : true,
 			shared : true
 		},
-		series : [{
-			color : colors[6],
-			name : 'EC2: Time of encoding',
-			type : 'column',
-			yAxis : 0,
-			tooltip : {
-				valueSuffix : ' s'
-			},
-			data : ec2times
-		}, {
-			color : colors[5],
-			name : 'Rackspace: Time of encoding',
-			type : 'column',
-			yAxis : 0,
-			tooltip : {
-				valueSuffix : ' s'
-			},
-			data : racktimes
-		}, {
-			color : colors[4],
-			name : 'Encoding Cost',
+		series : [/*{
+		 color : colors[6],
+		 name : 'EC2: Time of encoding',
+		 type : 'column',
+		 yAxis : 0,
+		 tooltip : {
+		 valueSuffix : ' s'
+		 },
+		 data : ec2times
+		 }, {
+		 color : colors[5],
+		 name : 'Rackspace: Time of encoding',
+		 type : 'column',
+		 yAxis : 0,
+		 tooltip : {
+		 valueSuffix : ' s'
+		 },
+		 data : racktimes
+		 }, {
+		 color : colors[4],
+		 name : 'Encoding Cost',
+		 type : 'line',
+		 yAxis : 1,
+		 tooltip : {
+		 valuePrefix : '$'
+		 },
+		 data : costs
+		 }, {
+		 color : colors[2],
+		 name : 'Time / Time Minimum',
+		 type : 'line',
+		 yAxis : 2,
+		 tooltip : {
+		 valuePrefix : 'x'
+		 },
+		 data : timeRatios
+		 }, {
+		 color : colors[3],
+		 name : 'Cost / Cost Minimum',
+		 type : 'line',
+		 yAxis : 2,
+		 tooltip : {
+		 valuePrefix : 'x'
+		 },
+		 data : costRatios
+		 }, */
+		{
+			name : 'Time Z Score',
 			type : 'line',
-			yAxis : 1,
-			tooltip : {
-				valuePrefix : '$'
-			},
-			data : costs
+			yAxis : 3,
+			data : timeZs
 		}, {
-			color : colors[3],
-			name : 'Encording Time Mean',
+			name : 'Cost Z Score',
 			type : 'line',
-			yAxis : 0,
-			data : timeMeans,
-			marker : {
-				enabled : false
-			}
+			yAxis : 3,
+			data : costZs
 		}, {
-			name : 'Encoding Cost Mean',
+			name : 'Time Z Score + Cost Z Score',
 			type : 'line',
-			yAxis : 1,
-			data : costMeans,
-			marker : {
-				enabled : false
-			}
+			yAxis : 3,
+			data : poles
 		}]
 	});
 	$('#x264_chart').highcharts().setSize(1000, 600);
 }
 
+function loadUnixBench() {
+	if (unixbenchs === null) {
+		unixbenchs = TAFFY();
+		$.getJSON("data/unixbench.json", function(d) {
+			$.each(d, function(k, v) {
+				unixbenchs.insert({
+					test : v['test'],
+					mean : v['mean'],
+					name : v['name'],
+					sd : v['sd'],
+					parallel : v['parallel'],
+					cloud : v['cloud'],
+					price : v['price'],
+					priceRatio : v['priceRatio'],
+					memory : v['memory'],
+					vcpu : v['vcpu']
+				});
+			});
+		});
+	}
+}
+
 function replot() {
 	if (-1 < Groups.indexOf(currentTab)) {
 		currentGroup = currentTab;
-		plotPerGroup(currentParallel, currentGroup, currentTest, currentXSorter);
+		plotPerGroup(currentGroup, currentTest, currentXSorter);
 	} else if ( currentTab in Scatters) {
 		currentScatter = Scatters[currentTab];
-		plotScatter(currentParallel, currentTest, currentScatter);
+		plotScatter(currentParallel, currentTest, currentScatter, currentXSorter);
 	} else if (currentTab == 'unixBench') {
 		plotUnixBenchs(currentParallel, currentTest, currentSorter, currentLimit);
 	} else if (currentTab == 'x264') {
@@ -853,47 +1156,26 @@ function replot() {
 $(function() {
 	$('#limitter').show();
 	$('#grpbtns').hide();
-	$('#testbtns').show();
+	$('#testbtns').hide();
 	$('#x264test').hide();
-	$('#sortbtns').show();
-	$('#parallelbtns').show();
-	$('#xsortbtns').hide();
-	$.getJSON("data/unixbench.json", function(d) {
-		$.each(d, function(k, v) {
-			unixbenchs.insert({
-				test : v['test'],
-				mean : v['mean'],
-				name : v['name'],
-				sd : v['sd'],
-				parallel : v['parallel'],
-				cloud : v['cloud'],
-				price : v['price'],
-				priceRatio : v['priceRatio'],
-				memory : v['memory'],
-				vcpu : v['vcpu']
-			});
-		});
-		plotUnixBenchs(currentParallel, currentTest, currentSorter, currentLimit);
-	});
-	$.getJSON("data/instances.json", function(d) {
-		$.each(d, function(k, v) {
-			var tmp = v;
-			tmp['name'] = k;
-			instances.insert(tmp);
-		});
-	});
-	$.getJSON("data/x264result_new.json", function(d) {
+	$('#sortbtns').hide();
+	$('#parallelbtns').hide();
+	$('#xsortbtns').show();
+	$.getJSON("data/x264.json", function(d) {
 		$.each(d, function(k, v) {
 			x264s.insert({
 				name : k,
 				cloud : v['cloud'],
-				memory : v['memory'],
-				vcpu : v['vcpu'],
-				price : v['price'],
 				time : v['time'],
-				cost : v['cost']
+				timeSd : v['time_sd'],
+				cost : v['cost'],
+				costSd : v['cost_sd'],
+				timeZ : v['time_zscore'],
+				costZ : v['cost_zscore'],
+				pole : v['pole']
 			});
 		});
+		plotx264(currentXSorter, currentLimit);
 	});
 });
 
@@ -915,9 +1197,10 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 			$('#xsortbtns').hide();
 		}
 		currentGroup = currentTab;
-		plotPerGroup(currentParallel, currentGroup, currentTest, currentXSorter);
+		plotPerGroup(currentGroup, currentTest, currentXSorter);
 	} else if (currentTab == 'unixBench') {
 		// If in the UnixBench tab
+		loadUnixBench();
 		$('#limitter').show();
 		$('#grpbtns').hide();
 		$('#testbtns').show();
@@ -940,18 +1223,34 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		plotx264(currentXSorter, currentLimit);
 	} else if ( currentTab in Scatters) {
 		// If in the scatter tabs
+		loadUnixBench();
 		$('#limitter').hide();
 		$('#grpbtns').hide();
 		$('#testbtns').show();
-		$('#x264test').hide();
+		$('#x264test').show();
 		$('#sortbtns').hide();
-		$('#parallelbtns').show();
-		$('#xsortbtns').hide();
+		if (currentTest == 'x264') {
+			$('#parallelbtns').hide();
+			$('#xsortbtns').show();
+		} else {
+			$('#parallelbtns').show();
+			$('#xsortbtns').hide();
+		}
 		if (currentTest == 'x264')
 			currentTest = 'index';
 		currentScatter = Scatters[currentTab];
-		plotScatter(currentParallel, currentTest, currentScatter);
+		plotScatter(currentParallel, currentTest, currentScatter, currentXSorter);
 	} else {// If in the Home tab
+		if (instances === null) {
+			instances = TAFFY();
+			$.getJSON("data/instances.json", function(d) {
+				$.each(d, function(k, v) {
+					var tmp = v;
+					tmp['name'] = k;
+					instances.insert(tmp);
+				});
+			});
+		}
 		$('#limitter').hide();
 		$('#grpbtns').show();
 		$('#testbtns').hide();
@@ -1117,6 +1416,10 @@ $('#xs_time').on('click', function(e) {
 });
 $('#xs_cost').on('click', function(e) {
 	currentXSorter = 'cost';
+	replot();
+});
+$('#xs_pole').on('click', function(e) {
+	currentXSorter = 'pole';
 	replot();
 });
 

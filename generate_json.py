@@ -23,8 +23,7 @@ Tests = [
     "shell1",
     "shell8",
     "overhead",
-    "index",
-    "x264"
+    "index"
 ]
 
 TestNames = [
@@ -134,7 +133,7 @@ def main():
                 print "- web/data/unixbench.json not found! Create one with %s unixbench ***" % sys.argv[0]
                 sys.exit(1)
             try:
-                x264s = json.load(open("web/data/x264result_new.json", "r"))
+                x264s = json.load(open("web/data/x264.json", "r"))
             except IOError:
                 print "- web/data/x264result_new.json not found! Create one with parse_x264.py ***"
                 sys.exit(1)
@@ -159,81 +158,81 @@ def main():
                     priceRanges.append(v['priceRange'])
 
             for g in ['size','type','family','vcpu','memoryRange','priceRange']:
+                if g=='size':
+                    groups = sizes
+                elif g=='type':
+                    groups = types
+                elif g=='family':
+                    groups = families
+                elif g=='vcpu':
+                    groups = vcpus
+                elif g=='memoryRange':
+                    groups = memoryRanges
+                elif g=='priceRange':
+                    groups = priceRanges
+                else:
+                    groups = []
+                # For UnixBench
                 for t in Tests:
-                    for p in ['single', 'multi']:
-                        index_dict = {}
-                        if g=='size':
-                            groups = sizes
-                        elif g=='type':
-                            groups = types
-                        elif g=='family':
-                            groups = families
-                        elif g=='vcpu':
-                            groups = vcpus
-                        elif g=='memoryRange':
-                            groups = memoryRanges
-                        elif g=='priceRange':
-                            groups = priceRanges
-                        else:
-                            groups = []
-                        for gs in groups:
-                            means = []
-                            msum = 0
-                            cloud = ''
-                            members = {}
-                            if t != 'x264':
-                                for l in logs:
-                                    if l['test'] == t and instances_dict[l['name']][g] == gs and l['parallel'] == p:
-                                        means.append(l['mean'])
-                                        msum += l['mean']
-                                        cloud = instances_dict[l['name']]['cloud']
-                                        members[l['name']] = {}
-                                        members[l['name']]['mean'] = l['mean']
-                                        members[l['name']]['cloud'] = cloud
-                                if len(means) == 0:
-                                    index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'parallel':p, 'members':members}
-                                    continue
-                                mean = msum/len(means)
-                                if len(means) == 1:
-                                    index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'parallel':p, 'members':members}
-                                    continue
-                                mmin = min(means)
-                                mmax = max(means)
-                                index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'parallel':p, 'members':members}
-                            else:
-                                if p == 'single':
-                                    val = 'time'
-                                else:
-                                    val = 'cost'
-                                for x in x264s.keys():
-                                    if instances_dict[x][g] == gs:
-                                        means.append(x264s[x][val])
-                                        msum += x264s[x][val]
-                                        cloud = instances_dict[x]['cloud']
-                                        members[x] = {}
-                                        members[x]['mean'] = x264s[x][val]
-                                        members[x]['cloud'] = cloud
-                                if len(means) == 0:
-                                    #index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'parallel':p, 'members':members}
-                                    continue
-                                mean = msum/len(means)
-                                if len(means) == 1:
-                                    index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'parallel':p, 'members':members}
-                                    continue
-                                mmin = min(means)
-                                mmax = max(means)
-                                index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'parallel':p, 'members':members}
+                    index_dict = {}
+                    for gs in groups:
+                        means = []
+                        msum = 0
+                        cloud = ''
+                        members = {}
+                        for l in logs:
+                            if l['test'] == t and instances_dict[l['name']][g] == gs:
+                                means.append(l['mean'])
+                                msum += l['mean']
+                                cloud = instances_dict[l['name']]['cloud']
+                                members[l['name']] = {}
+                                members[l['name']]['mean'] = l['mean']
+                                members[l['name']]['cloud'] = cloud
+                        if len(means) == 0:
+                            index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'members':members}
+                            continue
+                        mean = msum/len(means)
+                        if len(means) == 1:
+                            index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'members':members}
+                            continue
+                        mmin = min(means)
+                        mmax = max(means)
+                        index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'members':members}
+                    result_file = 'web/data/'+g+'_'+t+'.json'
+                    with open(result_file, 'w') as outfile:
+                        js.dump(index_dict, fp=outfile, indent=4*' ')
+                    print "+ " + result_file + " generated!"
 
-                        if t == 'x264':
-                            if p == 'single':
-                                result_file = 'web/data/'+g+'_'+t+'_time.json'
-                            else:
-                                result_file = 'web/data/'+g+'_'+t+'_cost.json'
-                        else:
-                            result_file = 'web/data/'+g+'_'+t+'_'+p+'.json'
-                        with open(result_file, 'w') as outfile:
-                            js.dump(index_dict, fp=outfile, indent=4*' ')
-                        print "+ " + result_file + " generated!"
+                # for x264
+                for val in ['time', 'cost', 'pole']:
+                    index_dict = {}
+                    for gs in groups:
+                        means = []
+                        msum = 0
+                        cloud = ''
+                        members = {}
+                        for k,v in x264s.iteritems():
+                            if instances_dict[k][g] == gs:
+                                means.append(x264s[k][val])
+                                msum += x264s[k][val]
+                                cloud = v['cloud'] 
+                                members[k] = {}
+                                members[k]['mean'] = x264s[k][val]
+                                members[k]['cloud'] = cloud
+                        if len(means) == 0:
+                            continue
+                        mean = msum/len(means)
+                        if len(means) == 1:
+                            index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'members':members}
+                            continue
+                        mmin = min(means)
+                        mmax = max(means)
+                        index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'members':members}
+                    result_file = 'web/data/'+g+'_x264_'+val+'.json'
+                    with open(result_file, 'w') as outfile:
+                        js.dump(index_dict, fp=outfile, indent=4*' ')
+                    print "+ " + result_file + " generated!"
+
             print "*** Done! ***"
         else:
             print "usage: %s [unixbench|group]" % sys.argv[0]

@@ -1,3 +1,4 @@
+from pprint import pprint
 import json
 import simplejson as js
 import sys
@@ -28,8 +29,10 @@ for i in res:
             'price' : price,
             'cloud' : i['Cloud'],
             'time' : i['realtime'],
-            'cost' : (i['realtime']/3600)*price
+            'cost' : (i['realtime']/3600)*price,
+            'category' : i['Category']
     }
 
+#pprint(new)
 with open('x264result_new.json', 'w') as outfile:
     js.dump(new, fp=outfile, indent=4*' ')

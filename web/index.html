@@ -21,10 +21,10 @@
 		<h1>Cloud Stack Evaluation</h1>
 		<ul class="nav nav-tabs" id="Tabs">
 			<li class="active">
-				<a href="#unixBench" data-toggle="tab">UnixBench</a>
+				<a href="#x264" data-toggle="tab">x264</a>
 			</li>
 			<li>
-				<a href="#x264" data-toggle="tab">x264</a>
+				<a href="#unixBench" data-toggle="tab">UnixBench</a>
 			</li>
 			<li>
 				<a href="#size" data-toggle="tab">Size groups</a>
@@ -148,13 +148,16 @@
 			<button type="button" class="btn btn-danger" id="xs_cost">
 				Cost for x264
 			</button>
+			<button type="button" class="btn btn-danger" id="xs_pole">
+				Time + Cost
+			</button>
 		</div>
 		<div class="tab-content">
-			<div class="tab-pane fade in active" id="unixBench">
-				<div id="unixBench_chart" class="margin: 0 auto"></div>
-			</div>
-			<div class="tab-pane fade" id="x264">
+			<div class="tab-pane fade in active" id="x264">
 				<div id="x264_chart" class="margin: 0 auto"></div>
+			</div>
+			<div class="tab-pane fade" id="unixBench">
+				<div id="unixBench_chart" class="margin: 0 auto"></div>
 			</div>
 			<div class="tab-pane fade" id="size">
 				<div id="size_chart" class="margin: 0 auto"></div>

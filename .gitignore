@@ -1,4 +1,5 @@
 # Avoid storing credentials
+web/data/
 web/script/modules/
 logs/
 .aws/

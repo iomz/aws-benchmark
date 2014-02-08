@@ -4,6 +4,7 @@ from boto.dynamodb2.table import Table
 from boto.dynamodb2.exceptions import ConditionalCheckFailedException
 from boto.exception import JSONResponseError
 from math import sqrt
+from os import mkdir, path
 from pprint import pprint
 from time import sleep
 import json
@@ -121,7 +122,7 @@ def main():
 
                         logs.append(log)
 
-            result_file = 'web/data/unixbench.json'
+            result_file = 'web/data/unixbench_raw.json'
             with open(result_file, 'w') as outfile:
                 js.dump(logs, fp=outfile, indent=4*' ')
             print "+ " + result_file + " generated!"
@@ -198,7 +199,16 @@ def main():
                         mmin = min(means)
                         mmax = max(means)
                         index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'members':members}
-                    result_file = 'web/data/'+g+'_'+t+'.json'
+                    result_dir = 'web/data/'+g
+                    if path.isdir(result_dir):
+                        pass
+                    elif path.isfile(result_dir):
+                        raise OSError("a file with the same name as the desired dir, '%s', already exists." % result_dir)
+                    else:
+                        head, tail = path.split(result_dir)
+                        if tail:
+                            mkdir(result_dir)
+                    result_file = result_dir+'/'+t+'.json'
                     with open(result_file, 'w') as outfile:
                         js.dump(index_dict, fp=outfile, indent=4*' ')
                     print "+ " + result_file + " generated!"
@@ -228,7 +238,16 @@ def main():
                         mmin = min(means)
                         mmax = max(means)
                         index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'members':members}
-                    result_file = 'web/data/'+g+'_x264_'+val+'.json'
+                    result_dir = 'web/data/'+g
+                    if path.isdir(result_dir):
+                        pass
+                    elif path.isfile(result_dir):
+                        raise OSError("a file with the same name as the desired dir, '%s', already exists." % result_dir)
+                    else:
+                        head, tail = path.split(result_dir)
+                        if tail:
+                            mkdir(result_dir)
+                    result_file = result_dir+'/x264_'+val+'.json'
                     with open(result_file, 'w') as outfile:
                         js.dump(index_dict, fp=outfile, indent=4*' ')
                     print "+ " + result_file + " generated!"

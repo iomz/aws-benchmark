@@ -3,10 +3,24 @@ from pprint import pprint
 import json
 import operator
 import simplejson as js
-import sys
 
-x264_json = 'web/data/x264_pole.json'
-unixbench_json = 'web/data/unixbench.json'
+Tests = [
+    "dhrystone",
+    "double",
+    "execl",
+    "file1024",
+    "file256",
+    "file4096",
+    "pipethru",
+    "pipecs",
+    "process",
+    "shell1",
+    "shell8",
+    "overhead",
+    "index"
+]
+
+x264_json = 'web/data/x264_stat.json'
 # x264
 res = json.load(open(x264_json, "r"))
 ranks = {}
@@ -19,7 +33,7 @@ for k,v in res.iteritems():
     ranks[k]['cloud'] = v['cloud']
 
 # Show x264 ranks
-pos_all = {}
+balance_dict = {}
 for sort in ['time', 'cost']:
     # Calculate z-score
     values = []
@@ -33,113 +47,56 @@ for sort in ['time', 'cost']:
         variance_sum += (v-mean)**2
     sd = sqrt(variance_sum/(len(ranks)-1))
     for k in ranks.keys():
-        ranks[k][sort+'_zscore'] = (ranks[k][sort]-mean)/sd
-
-    sorted_ranks = [ (v[sort+'_zscore'], k) for k,v in ranks.iteritems()]
-    sorted_ranks.sort()
-    print "\n#x264" + sort
-    pos = 0
-    for v,k in sorted_ranks:
-        if k not in pos_all:
-            pos_all[k] = 0
-        pos+=1
-        pos_all[k] += v
-        if pos < 10:
-            print "%d %s: %f" % (pos,k,v)
-
-# Cost pole
-print '\n#x264 pole'
-pos = 0
-sorted_ranks = [ (v, k) for k,v in pos_all.iteritems()]
-sorted_ranks.sort()
-min_pole = min(pos_all.itervalues())
-print min_pole
-for v,k in sorted_ranks:
-    pos += 1
-    ranks[k]['pole'] = v-min_pole
-    if pos < 10:
-        print "%d %s: %f" % (pos,k,v)
+        ranks[k][sort+'_z'] = (ranks[k][sort]-mean)/sd
+    
+for k,v in ranks.iteritems():
+    ranks[k]['balance'] =  (-1*v['time_z']) - v['cost_z']
 
 with open('web/data/x264.json', 'w') as outfile:
     js.dump(ranks, fp=outfile, indent=4*' ')
 
-## UnixBench
-#res = json.load(open(unixbench_json, "r"))
-#cost_dict = {}
-#perf_dict = {}
-#for v in res:
-#    k = v['name']
-#    if k not in ranks:
-#        continue
-#
-#    perf_dict[k] = 0 
-#    cost_dict[k] = 0 
-#    ranks[k][v['test']+'cost'] = v['priceRatio']
-#    ranks[k][v['test']+'perf'] = v['mean']
-#
-## Show unixbench ranks
-#for test in ['dhrystone', 'double']:
-##for test in ['file256', 'file1024', 'file4096']:
-#    for sort in ['perf','cost']:
-#        # Calculate z-score
-#        values = []
-#        value_sum = 0
-#        for v in ranks.values():
-#            values.append(v[test+sort])
-#            value_sum += v[test+sort]
-#        mean = value_sum/len(ranks)
-#        variance_sum = 0
-#        for v in values:
-#            variance_sum += (v-mean)**2
-#        sd = sqrt(variance_sum/(len(ranks)-1))
-#        for k in ranks.keys():
-#            ranks[k][test+sort+'zscore'] = (ranks[k][test+sort]-mean)/sd
-#
-#        sorted_ranks = [ (v[test+sort+'zscore'], k) for k,v in ranks.iteritems()]
-#        sorted_ranks.sort(reverse=True)
-#        print "\n#" + test + " " + sort
-#        pos = 0
-#        for v,k in sorted_ranks:
-#            if k not in cost_dict:
-#                continue
-#            pos+=1
-#            if sort == 'cost':
-#                cost_dict[k] += v
-#            else:
-#                perf_dict[k] += v
-#            if pos < 10:
-#                print "%d %s: %f" % (pos,k,v)
-#
-## Perf pole
-#print '\n#perf pole'
-#pos = 0
-#sorted_ranks = [ (v, k) for k,v in perf_dict.iteritems()]
-#sorted_ranks.sort(reverse=True)
-#for v,k in sorted_ranks:
-#    pos += 1
-#    if pos < 10:
-#        print "%d %s: %f" % (pos,k,v)
-#
-## Cost pole
-#print '\n#cost pole'
-#pos = 0
-#sorted_ranks = [ (v, k) for k,v in cost_dict.iteritems()]
-#sorted_ranks.sort(reverse=True)
-#for v,k in sorted_ranks:
-#    pos += 1
-#    if pos < 10:
-#        print "%d %s: %f" % (pos,k,v)
-#
-## Balanced pole
-#print '\n#balanced pole'
-#pos = 0
-#balanced_dict = {}
-#for k in perf_dict.keys():
-#    balanced_dict[k] = perf_dict[k] + cost_dict[k]
-#sorted_ranks = [ (v, k) for k,v in balanced_dict.iteritems()]
-#sorted_ranks.sort(reverse=True)
-#for v,k in sorted_ranks:
-#    pos += 1
-#    if pos < 10:
-#        print "%d %s: %f" % (pos,k,v)
-#
+# UnixBench
+unixbench_json = 'web/data/unixbench_raw.json'
+res = json.load(open(unixbench_json, "r"))
+ud = {}
+pd = {}
+for v in res:
+    k = v['name']
+    if k not in ranks:
+        continue
+    if k in pd:
+        if pd[k]!='single':
+            continue
+    pd[k] = v['parallel']
+    if k not in ud:
+        ud[k] = {}
+        ud[k]['cloud'] = ranks[k]['cloud']
+        ud[k][v['test']] = {}
+    else:
+        if v['test'] not in ud[k]:
+            ud[k][v['test']] = {}
+    ud[k][v['test']]['cost'] = v['priceRatio']
+    ud[k][v['test']]['perf'] = v['mean']
+    ud[k][v['test']]['perf_err'] = v['sd'] 
+
+# Show unixbench ranks
+for test in Tests:
+    for metric in ['perf','cost']:
+        # Calculate z-score
+        values = []
+        for k, v in ud.iteritems():
+            values.append(v[test][metric])
+        mean = sum(values)/len(values)
+        variance_sum = 0
+        for v in values:
+            variance_sum += (v-mean)**2
+        sd = sqrt(variance_sum/(len(values)-1))
+        for k, v in ud.iteritems():
+            ud[k][test][metric+'_z'] = (v[test][metric]-mean)/sd
+
+    for k,v in ud.iteritems():
+        ud[k][test]['balance'] = v[test]['perf_z'] - v[test]['cost_z']
+
+with open('web/data/unixbench.json', 'w') as outfile:
+    js.dump(ud, fp=outfile, indent=4*' ')
+

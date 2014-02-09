@@ -1,0 +1,28 @@
+# user data for benchmark: Iperf
+echo $INSTANCE_NAME > /var/local/instance_name
+
+# Prepare the dependencies (for RedHat linux only)
+yum -y --enablerepo=epel install iperf
+echo '*** Dependency all installed and updated'
+
+# Fetch files for benchmark
+wget --no-check-certificate -O - https://s3-us-west-1.amazonaws.com/iomz-benchmark/iperf.tgz | tar zxv -C ~/
+
+# Create and register iperf on crontab
+#echo "$MIN * * * * ~/run_iperf.sh $IPERF_SERVER" > ~/iperf_cronjob
+#crontab ~/iperf_cronjob
+
+# If boto is not installed, install it
+if [ ! `python ~/upload_iperf_log.py check` ]; then
+  git clone git://github.com/boto/boto.git ~/boto
+  cd ~/boto
+  python ~/boto/setup.py install
+  echo '*** boto installed'
+fi
+python ~/upload_iperf_log.py check
+
+# Run iperf benchmark
+~/run_iperf.sh $IPERF_SERVER
+
+# Halt
+halt

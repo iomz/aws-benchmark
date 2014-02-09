@@ -1,5 +1,5 @@
 all:
-	tar zcvf unixbench.tgz run_unixbench.sh .boto check_boto.py upload_log.py
+	tar zcvf unixbench.tgz run_unixbench.sh .boto check_boto.py upload_unixbench_log.py
 	aws s3 cp unixbench.tgz s3://iomz-benchmark/
 	s3cmd setacl --acl-public s3://iomz-benchmark/unixbench.tgz
 

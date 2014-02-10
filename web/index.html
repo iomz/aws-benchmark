@@ -27,6 +27,9 @@
 				<a href="#memUtil" data-toggle="tab">Memory Util</a>
 			</li>
 			<li>
+				<a href="#memUtilTime" data-toggle="tab">Memory Util Time</a>
+			</li>
+			<li>
 				<a href="#vcpuUtil" data-toggle="tab">vCPU Util</a>
 			</li>
 			<li>
@@ -57,13 +60,7 @@
 				<a href="#priceRange" data-toggle="tab">Price Groups</a>
 			</li>
 			<li>
-				<a href="#scatterPrice" data-toggle="tab">Scatter Price</a>
-			</li>
-			<li>
-				<a href="#scatterMemory" data-toggle="tab">Scatter Memory</a>
-			</li>
-			<li>
-				<a href="#scattervCPU" data-toggle="tab">Scatter vCPU</a>
+				<a href="#scatterVirt" data-toggle="tab">Virtualizations in Scatter</a>
 			</li>
 		</ul>
 		<div class="input-group" id="limitter">
@@ -137,6 +134,9 @@
 			<div class="tab-pane fade" id="memUtil">
 				<div id="memUtil_chart" class="margin: 0 auto"></div>
 			</div>
+			<div class="tab-pane fade" id="memUtilTime">
+				<div id="memUtilTime_chart" class="margin: 0 auto"></div>
+			</div>
 			<div class="tab-pane fade" id="vcpuUtil">
 				<div id="vcpuUtil_chart" class="margin: 0 auto"></div>
 			</div>
@@ -173,14 +173,8 @@
 				<div id="priceRange_chart" class="margin: 0 auto"></div>
 				<div id="priceRange_desc_chart" class="margin: 0 auto"></div>
 			</div>
-			<div class="tab-pane fade" id="scatterPrice">
-				<div id="scatterPrice_chart" class="margin: 0 auto"></div>
-			</div>
-			<div class="tab-pane fade" id="scatterMemory">
-				<div id="scatterMemory_chart" class="margin: 0 auto"></div>
-			</div>
-			<div class="tab-pane fade" id="scattervCPU">
-				<div id="scattervCPU_chart" class="margin: 0 auto"></div>
+			<div class="tab-pane fade" id="scatterVirt">
+				<div id="scatterVirt_chart" class="margin: 0 auto"></div>
 			</div>
 		</div>
 		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->

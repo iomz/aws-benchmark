@@ -24,7 +24,8 @@ Tests = [
     "shell1",
     "shell8",
     "overhead",
-    "index"
+    "index",
+    "x264"
 ]
 
 TestNames = [
@@ -128,6 +129,16 @@ def main():
             print "+ " + result_file + " generated!"
             print "*** Done! ***"
         elif sys.argv[1] == 'group':
+            datadir = 'web/data/group'
+            if path.isdir(datadir):
+                pass
+            elif path.isfile(datadir):
+                raise OSError("a file with the same name as the desired dir, '%s', already exists." % datadir)
+            else:
+                head, tail = path.split(datadir)
+                if tail:
+                    mkdir(datadir)
+
             try:
                 logs = json.load(open("web/data/unixbench.json", "r"))
             except IOError:
@@ -159,6 +170,7 @@ def main():
                     priceRanges.append(v['priceRange'])
 
             for g in ['size','type','family','vcpu','memoryRange','priceRange']:
+                print g
                 if g=='size':
                     groups = sizes
                 elif g=='type':
@@ -174,84 +186,70 @@ def main():
                 else:
                     groups = []
                 # For UnixBench
-                for t in Tests:
-                    index_dict = {}
-                    for gs in groups:
-                        means = []
-                        msum = 0
-                        cloud = ''
+                group_dict = {}
+                for gs in groups:
+                    print gs
+                    group_dict[gs] = {}
+                    for t in Tests:
+                        test_dict = {}
                         members = {}
-                        for l in logs:
-                            if l['test'] == t and instances_dict[l['name']][g] == gs:
-                                means.append(l['mean'])
-                                msum += l['mean']
-                                cloud = instances_dict[l['name']]['cloud']
-                                members[l['name']] = {}
-                                members[l['name']]['mean'] = l['mean']
-                                members[l['name']]['cloud'] = cloud
-                        if len(means) == 0:
-                            index_dict[gs] = {'mean':0, 'min':0, 'max':0, 'num':0, 'cloud':cloud, 'members':members}
-                            continue
-                        mean = msum/len(means)
-                        if len(means) == 1:
-                            index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'members':members}
-                            continue
-                        mmin = min(means)
-                        mmax = max(means)
-                        index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'members':members}
-                    result_dir = 'web/data/'+g
-                    if path.isdir(result_dir):
-                        pass
-                    elif path.isfile(result_dir):
-                        raise OSError("a file with the same name as the desired dir, '%s', already exists." % result_dir)
-                    else:
-                        head, tail = path.split(result_dir)
-                        if tail:
-                            mkdir(result_dir)
-                    result_file = result_dir+'/'+t+'.json'
-                    with open(result_file, 'w') as outfile:
-                        js.dump(index_dict, fp=outfile, indent=4*' ')
-                    print "+ " + result_file + " generated!"
-
-                # for x264
-                for val in ['time', 'cost', 'pole']:
-                    index_dict = {}
-                    for gs in groups:
-                        means = []
-                        msum = 0
-                        cloud = ''
-                        members = {}
-                        for k,v in x264s.iteritems():
+                        minp = 10
+                        minc = 10
+                        minb = 10
+                        maxp = -10
+                        maxc = -10
+                        maxb = -10
+                        sump = 0
+                        sumc = 0
+                        sumb = 0
+                        if t != 'x264':
+                            source = logs
+                        else:
+                            source = x264s
+                        for k,v in source.iteritems():
                             if instances_dict[k][g] == gs:
-                                means.append(x264s[k][val])
-                                msum += x264s[k][val]
-                                cloud = v['cloud'] 
+                                if t != 'x264':
+                                    p = v[t]['perf_z']
+                                    c = v[t]['cost_z']
+                                    b = v[t]['balance']
+                                else:
+                                    p = v['time_z']
+                                    c = v['cost_z']
+                                    b = v['balance']
+                                minp = min(minp,p)
+                                maxp = max(maxp,p)
+                                minc = min(minc,c)
+                                maxc = max(maxc,c)
+                                minb = min(minb,b)
+                                maxb = max(maxb,b)
+                                sump += p
+                                sumc += c
+                                sumb += b
                                 members[k] = {}
-                                members[k]['mean'] = x264s[k][val]
-                                members[k]['cloud'] = cloud
-                        if len(means) == 0:
+                                members[k]['perf'] = p
+                                members[k]['cost'] = c
+                                members[k]['balance'] = b
+                        if len(members)==0:
                             continue
-                        mean = msum/len(means)
-                        if len(means) == 1:
-                            index_dict[gs] = {'mean':mean, 'min':mean, 'max':mean, 'num':1, 'cloud':cloud, 'members':members}
-                            continue
-                        mmin = min(means)
-                        mmax = max(means)
-                        index_dict[gs] = {'mean':mean, 'min':mmin, 'max':mmax, 'num':len(means), 'cloud':cloud, 'members':members}
-                    result_dir = 'web/data/'+g
-                    if path.isdir(result_dir):
-                        pass
-                    elif path.isfile(result_dir):
-                        raise OSError("a file with the same name as the desired dir, '%s', already exists." % result_dir)
+                        test_dict['minp'] = minp
+                        test_dict['minc'] = minc
+                        test_dict['minb'] = minb
+                        test_dict['maxp'] = maxp
+                        test_dict['maxc'] = maxc
+                        test_dict['maxb'] = maxb
+                        test_dict['meanp'] = sump/len(members)
+                        test_dict['meanc'] = sumc/len(members)
+                        test_dict['meanb'] = sumb/len(members)
+                        test_dict['members'] = members
+                    if len(test_dict) != 0:
+                        group_dict[gs][t] = test_dict
                     else:
-                        head, tail = path.split(result_dir)
-                        if tail:
-                            mkdir(result_dir)
-                    result_file = result_dir+'/x264_'+val+'.json'
-                    with open(result_file, 'w') as outfile:
-                        js.dump(index_dict, fp=outfile, indent=4*' ')
-                    print "+ " + result_file + " generated!"
+                        del group_dict[gs]
 
+                result_file = 'web/data/group/'+g+'.json'
+                with open(result_file, 'w') as outfile:
+                    js.dump(group_dict, fp=outfile, indent=4*' ')
+                print "+ " + result_file + " generated!"
             print "*** Done! ***"
         else:
             print "usage: %s [unixbench|group]" % sys.argv[0]

@@ -32,9 +32,16 @@ for i in res:
     # Memory usage
     memory_size = memstat['total_mem']
     memory_usage_sum = 0
+    time = 0
+    mem_dict = {}
     for mu in memstat['used_mem']:
-       memory_usage_sum += 100.0*mu/memory_size
+        usage = 100.0*mu/memory_size
+        memory_usage_sum += usage
+        if time%10==0:
+            mem_dict[time] = usage
+        time+=2
     memory_usage_mean = memory_usage_sum/len(memstat['used_mem'])
+    mutod = OrderedDict(sorted(mem_dict.items()))
 
     # CPU usage
     cpu_core_dict = {}
@@ -62,7 +69,7 @@ for i in res:
     #pprint(cpu_core_dict)
     for k,v in cpu_time_dict.iteritems():
         cpu_time_dict[k] = sum(v)/len(v)
-    od = OrderedDict(sorted(cpu_time_dict.items()))
+    cutod = OrderedDict(sorted(cpu_time_dict.items()))
     #pprint(od)
 
     
@@ -80,9 +87,10 @@ for i in res:
         'cloud' : i['Cloud'],
         'memory_size' : instances[name]['memory'],
         'memory_utl' : memory_usage_mean,
+        'memory_utl_time' : mutod,
         'cpu_utl' : core_sum/core,
         'cpu_utl_core' : cpu_core_dict,
-        'cpu_utl_time' : od
+        'cpu_utl_time' : cutod
     }
 
 with open('web/data/util.json', 'w') as outfile:

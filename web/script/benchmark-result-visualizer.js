@@ -7,15 +7,15 @@
 
  Parse benchmark json results to TaffyDB and plot the figure with Highcharts.js
  */
-var x264s = TAFFY();
 var instances = null;
+var groupResults = null;
+var x264s = TAFFY();
 var unixbenchs = TAFFY();
 var utils = TAFFY();
 var currentLimit = 30;
 var currentTab = 'x264';
 var currentTest = "x264";
 var currentSorter = "balance";
-var currentScatter = 'price';
 var currentGroup = "vcpu";
 var currentOrder = ' desc';
 var colors = Highcharts.getOptions().colors;
@@ -28,17 +28,12 @@ var Metrics = {
 	'balance' : 'Balance'
 };
 var Utils = ['memUtil', 'vcpuUtil'];
-var UtilDetails = ['vcpuUtilCore', 'vcpuUtilTime'];
+var UtilDetails = ['memUtilTime', 'vcpuUtilCore', 'vcpuUtilTime'];
 var Groups = ['size', 'type', 'family', 'vcpu', 'memoryRange', 'priceRange'];
 var Sorters = {
 	'perf' : "Actual time elapsed",
 	'cost' : "Cost necessary to complete x264 benchmark",
 	'balance' : "The sum of Z Score of time and cost"
-};
-var Scatters = {
-	"scatterPrice" : "price",
-	"scatterMemory" : "memory",
-	"scattervCPU" : "vcpu"
 };
 var Specs = {
 	"type" : "Instance Type",
@@ -497,6 +492,38 @@ function plotUtilDetails(util, limit, order) {
 				};
 			})
 		};
+	} else if (util == 'memUtilTime') {
+		var resource = 'memUtil';
+		var utilName = 'Memory utilization per time frame';
+		var yData = utils().order(resource + order).limit(limit).map(function(i) {
+			return {
+				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
+				drilldown : i.name,
+				name : i.name,
+				y : parseFloat(i.memUtil.toFixed(2))
+			};
+		});
+		var yAxisData = [];
+		var seriesData = [];
+		var drilldownData = {
+			series : utils().order(resource + order).limit(limit).map(function(i) {
+                var members = utils({name:i.name}).map(function(j) {
+				var times = [];
+                for (k in j.muTime ) {
+				times.push({
+				name : k,
+				y : j.muTime[k]
+				});
+                }
+				return times;
+				})[0];
+				return {
+				name : i.name,
+				id : i.name,
+				data : members 
+				};
+			})
+		};
 	}
 
 	var titleName = titleOrder + limit + ' ' + utilName;
@@ -525,6 +552,9 @@ function plotUtilDetails(util, limit, order) {
 		title : {
 			text : titleName
 		},
+        subtitle : {
+            text : 'Click an instance to drilldown'
+        },
 		xAxis : {
 			labels : {
 				rotation : 45
@@ -549,72 +579,25 @@ function plotUtilDetails(util, limit, order) {
 	$(el).highcharts().setSize(1000, 600);
 }
 
-function plotPerGroup(group, test, sorter, order) {
-	if (test == 'x264') {
-		var groupDataFile = "data/" + group + "/" + test + "_" + sorter + ".json";
-	} else {
-		var groupDataFile = "data/" + group + "/" + test + ".json";
-	}
+function plotPerGroup(group, test, metric) {
+	var groupDataFile = "data/group/" + group + ".json";
 	$.getJSON(groupDataFile, function(d) {
-		var groupResults = TAFFY();
+		groupResults = TAFFY();
 		$.each(d, function(k, v) {
-			var memberDict = v['members'];
-			var memberData = TAFFY();
-			for (var i in memberDict) {
-				memberData.insert({
-					'color' : (memberDict[i]['cloud'] == 'EC2') ? colors[6] : colors[5],
-					'name' : i,
-					'y' : memberDict[i]['mean']
-				});
-			}
-			var members = {
-				name : k,
-				id : k,
-				data : memberData().order('y' + order).map(function(i) {
-					return {
-						color : i.color,
-						name : i.name,
-						y : i.y
-					};
-				})
-			};
+            var members = [];
+            for (var i in v[test]['members']) {
+                members.push({
+                    name : i,
+                    y : v[test]['members'][i][metric]
+                });
+            }
 			groupResults.insert({
-				'name' : k,
-				'range' : [v['min'], v['max']],
-				'mean' : v['mean'],
-				'num' : v['num'],
-				'cloud' : v['cloud'],
-				'members' : members
+				'group' : k,
+                'min' : v[test]['min'+metric[0]],
+                'max' : v[test]['max'+metric[0]],
+                'mean' : v[test]['mean'+metric[0]],
+                'members' : members
 			});
-		});
-		if (test == 'index') {
-			var tName = Tests[test];
-			var subTitle = 'Grouped by ' + Specs[group];
-		} else if (test == 'x264') {
-			var tName = Tests[test];
-			var subTitle = Sorters[sorter];
-		} else {
-			var tName = Tests[test] + ' (' + TestUnits[test] + ')';
-			var subTitle = 'Grouped by ' + Specs[group];
-		}
-		var names = groupResults().order('mean' + order).map(function(i) {
-			return i.name;
-		});
-		var ranges = groupResults().order('mean' + order).map(function(i) {
-			return [parseFloat(i.range[0].toFixed(2)), parseFloat(i.range[1].toFixed(2))];
-		});
-		var nums = groupResults().order('mean' + order).map(function(i) {
-			return parseFloat(i.num.toFixed(2));
-		});
-		var means = groupResults().order('mean' + order).map(function(i) {
-			return {
-				name : i.name,
-				y : parseFloat(i.mean.toFixed(2)),
-				drilldown : i.name
-			};
-		});
-		var drilldownSeries = groupResults().map(function(i) {
-			return i.members;
 		});
 		var el = "#" + group + "_chart";
 		$(el).highcharts({
@@ -625,16 +608,16 @@ function plotPerGroup(group, test, sorter, order) {
 				text : Tests[test]
 			},
 			subtitle : {
-				text : subTitle
+				text : 'Click a group to drilldown'
 			},
 			xAxis : {
 				type : 'category'
 			},
-			yAxis : [{
+			yAxis : {
 				title : {
-					text : tName
+					text : Metrics[metric]
 				}
-			}],
+			},
 			legend : {
 				enabled : false
 			},
@@ -648,12 +631,24 @@ function plotPerGroup(group, test, sorter, order) {
 			},
 			series : [{
 				colorByPoint : true,
-				name : tName,
+				name : Metrics[metric],
 				yAxis : 0,
-				data : means
+				data : groupResults().order('mean desc').map(function(i){
+                    return {
+                        drilldown : i.group,
+                        name : i.group,
+                        y : i.mean
+                    };
+                })
 			}],
 			drilldown : {
-				series : drilldownSeries
+				series : groupResults().map(function(i){
+                    return {
+                        name : i.group,
+                        id : i.group,
+                        data : i.members
+                    };
+                })
 			}
 		});
 		$(el).highcharts().setSize(1000, 300);
@@ -663,11 +658,13 @@ function plotPerGroup(group, test, sorter, order) {
 				text : null
 			},
 			xAxis : {
-				categories : names
+				categories : groupResults().order('mean desc').map(function(i){
+                    return i.group;
+                })
 			},
 			yAxis : [{
 				title : {
-					text : tName
+					text : Metrics[metric]
 				}
 			}, {
 				title : {
@@ -689,18 +686,19 @@ function plotPerGroup(group, test, sorter, order) {
 			series : [{
 				name : 'Min-Max range',
 				type : 'arearange',
-				data : ranges,
+				data : groupResults().order('mean desc').map(function(i){
+                    return [i.min, i.max];
+                }),
 				yAxis : 0
 			}, {
 				color : colors[1],
 				name : 'Number of instances',
 				type : 'line',
-				data : nums,
+				data : groupResults().order('mean desc').map(function(i){
+                    return i.members.length;
+                }),
 				yAxis : 1
 			}],
-			drilldown : {
-				series : drilldownSeries
-			}
 		});
 		$(el).highcharts().setSize(1040, 300);
 	});
@@ -843,136 +841,47 @@ function plotUnixBenchs(test, sorter, limit, order) {
 	$("#unixBench_chart").highcharts().setSize(1000, 600);
 }
 
-function plotScatter(test, scatter, sorter) {
+function plotScatter(test, metric) {
 	if (test != 'x264') {
-		var ec2paravirtuals = unixbenchs({
-			test : test,
-			name : {
-				like : 'paravirtual'
-			},
-			cloud : 'EC2'
-		}).map(function(i) {
-			if (scatter == 'price')
-				var val = i.price;
-			else if (scatter == 'memory')
-				var val = i.memory;
-			else if (scatter == 'vcpu')
-				var val = i.vcpu;
-			return {
-				name : i.name,
-				x : val,
-				y : parseFloat(i.mean.toFixed(2))
-			};
-		});
-		var rackparavirtuals = unixbenchs({
-			test : test,
-			name : {
-				like : 'paravirtual'
-			},
-			cloud : 'Rackspace'
-		}).map(function(i) {
-			if (scatter == 'price')
-				var val = i.price;
-			else if (scatter == 'memory')
-				var val = i.memory;
-			else if (scatter == 'vcpu')
-				var val = i.vcpu;
-			return {
-				name : i.name,
-				x : val,
-				y : parseFloat(i.mean.toFixed(2))
-			};
-		});
-		var hvms = unixbenchs({
-			test : test,
-			name : {
-				like : 'hvm'
-			}
-		}).map(function(i) {
-			if (scatter == 'price')
-				var val = i.price;
-			else if (scatter == 'memory')
-				var val = i.memory;
-			else if (scatter == 'vcpu')
-				var val = i.vcpu;
-			return {
-				name : i.name,
-				x : val,
-				y : parseFloat(i.mean.toFixed(2))
-			};
-		});
+        var data = unixbenchs().map(function(i){
+            return i;
+        });
+        var cost = test+'_'+'cost_z';
+        var perf = test+'_'+'perf_z';
+        var alpha = 1;
 	} else {
-		var ec2paravirtuals = x264s({
-			name : {
-				like : 'paravirtual'
-			},
-			cloud : 'EC2'
-		}).map(function(i) {
-			if (scatter == 'price')
-				var val = i.price;
-			else if (scatter == 'memory')
-				var val = i.memory;
-			else if (scatter == 'vcpu')
-				var val = i.vcpu;
-			if (sorter == 'perf')
-				var y = i.time;
-			else if (sorter == 'cost')
-				var y = i.cost;
-			else if (sorter == 'balance')
-				var y = i.balance;
-			return {
-				name : i.name,
-				x : val,
-				y : parseFloat((1 / y).toFixed(2))
-			};
-		});
-		var rackparavirtuals = x264s({
-			name : {
-				like : 'paravirtual'
-			},
-			cloud : 'Rackspace'
-		}).map(function(i) {
-			if (scatter == 'price')
-				var val = i.price;
-			else if (scatter == 'memory')
-				var val = i.memory;
-			else if (scatter == 'vcpu')
-				var val = i.vcpu;
-			if (sorter == 'perf')
-				var y = i.time;
-			else if (sorter == 'cost')
-				var y = i.cost;
-			else if (sorter == 'balance')
-				var y = i.balance;
-			return {
-				name : i.name,
-				x : val,
-				y : parseFloat((1 / y).toFixed(2))
-			};
-		});
-		var hvms = x264s({
-			name : {
-				like : 'hvm'
-			}
-		}).map(function(i) {
-			if (scatter == 'price')
-				var val = i.price;
-			else if (scatter == 'memory')
-				var val = i.memory;
-			else if (scatter == 'vcpu')
-				var val = i.vcpu;
-			if (sorter == 'perf')
-				var y = i.time;
-			else if (sorter == 'cost')
-				var y = i.cost;
-			else if (sorter == 'balance')
-				var y = i.balance;
-			return {
-				name : i.name,
-				x : val,
-				y : parseFloat((1 / y).toFixed(2))
-			};
-		});
+        var data = x264s().map(function(i){
+            return i;
+        });
+        var cost = 'costZ';
+        var perf = 'timeZ';
+        var alpha = -1;
+	}
+	var ec2paravirtuals = [];
+	var rackparavirtuals = [];
+	var hvms = [];
+    for (var i=0; i<data.length; i++){
+        if (data[i]['cloud']=='EC2') {
+            if ( -1 < data[i]['name'].indexOf('hvm') ){
+                hvms.push({
+                    name : data[i]['name'],
+			        x : parseFloat(data[i][cost].toFixed(2)),
+			        y : parseFloat(alpha*data[i][perf].toFixed(2))
+                });
+            } else {
+                ec2paravirtuals.push({
+                    name : data[i]['name'],
+                    x : parseFloat(data[i][cost].toFixed(2)),
+                    y : parseFloat(alpha*data[i][perf].toFixed(2))
+                });
+            }
+        } else {
+            rackparavirtuals.push({
+                name : data[i]['name'],
+                x : parseFloat(data[i][cost].toFixed(2)),
+                y : parseFloat(alpha*data[i][perf].toFixed(2))
+            });
+        }
 	}
 	$('#' + currentTab + '_chart').highcharts({
 		chart : {
@@ -980,12 +889,12 @@ function plotScatter(test, scatter, sorter) {
 			zoomType : 'xy'
 		},
 		title : {
-			text : Tests[test] + ' vs ' + Specs[scatter]
+            text : Tests[test] + ': Performance vs. Cost'
 		},
 		xAxis : {
 			title : {
 				enabled : true,
-				text : Specs[scatter]
+				text : 'Cost Z Score' 
 			},
 			startOnTick : true,
 			endOnTick : true,
@@ -993,7 +902,7 @@ function plotScatter(test, scatter, sorter) {
 		},
 		yAxis : {
 			title : {
-				text : Tests[test] + ' (' + TestUnits[test] + ')'
+				text : 'Performance Z Score'
 			}
 		},
 		legend : {
@@ -1026,7 +935,7 @@ function plotScatter(test, scatter, sorter) {
 				},
 				tooltip : {
 					crosshairs : true,
-					pointFormat : '<b>{point.name}<b><br>{point.x} ' + SpecUnits[scatter] + ', {point.y} ' + TestUnits[test],
+					pointFormat : '<b>{point.name}<b><br>{point.x} , {point.y} ' + TestUnits[test],
 				}
 			}
 		},
@@ -1050,14 +959,13 @@ function plotScatter(test, scatter, sorter) {
 function replot() {
 	if (-1 < Groups.indexOf(currentTab)) {
 		currentGroup = currentTab;
-		plotPerGroup(currentGroup, currentTest, currentSorter, currentOrder);
+		plotPerGroup(currentGroup, currentTest, currentSorter);
 	} else if (-1 < Utils.indexOf(currentTab)) {
 		plotUtils(currentTab, currentLimit, currentOrder);
 	} else if (-1 < UtilDetails.indexOf(currentTab)) {
 		plotUtilDetails(currentTab, currentLimit, currentOrder);
-	} else if ( currentTab in Scatters) {
-		currentScatter = Scatters[currentTab];
-		plotScatter(currentTest, currentScatter, currentSorter);
+	} else if ( currentTab == 'scatterVirt' ) {
+		plotScatter(currentTest, currentSorter);
 	} else if (currentTab == 'unixBench') {
 		plotUnixBenchs(currentTest, currentSorter, currentLimit, currentOrder);
 	} else if (currentTab == 'x264') {
@@ -1081,8 +989,8 @@ $(function() {
 				timeSd : v['time_sd'],
 				cost : v['cost'],
 				costSd : v['cost_sd'],
-				timeZ : v['time_zscore'],
-				costZ : v['cost_zscore'],
+				timeZ : v['time_z'],
+				costZ : v['cost_z'],
 				balance : v['balance']
 			});
 		});
@@ -1095,6 +1003,7 @@ $(function() {
 				cloud : v['cloud'],
 				memSize : v['memory_size'],
 				memUtil : v['memory_utl'],
+                muTime : v['memory_utl_time'],
 				vcpuUtil : v['cpu_utl'],
 				cuCore : v['cpu_utl_core'],
 				cuTime : v['cpu_utl_time'],
@@ -1131,7 +1040,7 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#togglebtns').hide();
 		$('#xsortbtns').show();
 		currentGroup = currentTab;
-		plotPerGroup(currentGroup, currentTest, currentSorter, currentOrder);
+		plotPerGroup(currentGroup, currentTest, currentSorter);
 	} else if (-1 < Utils.indexOf(currentTab)) {
 		// If in the util tab
 		$('#limitter').show();
@@ -1173,18 +1082,15 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#xsortbtns').show();
 		$('#togglebtns').show();
 		plotx264(currentSorter, currentLimit, currentOrder);
-	} else if ( currentTab in Scatters) {
+	} else if ( currentTab == 'scatterVirt') {
 		// If in the scatter tabs
 		$('#limitter').hide();
 		$('#grpbtns').hide();
 		$('#testbtns').show();
 		$('#x264test').show();
 		$('#togglebtns').hide();
-		$('#xsortbtns').show();
-		if (currentTest == 'x264')
-			currentTest = 'index';
-		currentScatter = Scatters[currentTab];
-		plotScatter(currentTest, currentScatter, currentSorter);
+		$('#xsortbtns').hide();
+		plotScatter(currentTest, currentSorter);
 	} else {// If in the Home tab
 		if (instances === null) {
 			instances = TAFFY();

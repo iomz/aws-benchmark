@@ -475,20 +475,20 @@ function plotUtilDetails(util, limit, order) {
 		var seriesData = [];
 		var drilldownData = {
 			series : utils().order(resource + order).limit(limit).map(function(i) {
-                var members = utils({name:i.name}).map(function(j) {
+				var members = utils({name:i.name}).map(function(j) {
 				var times = [];
-                for (k in j.cuTime ) {
+				for (k in j.cuTime ) {
 				times.push({
 				name : k,
 				y : j.cuTime[k]
 				});
-                }
+				}
 				return times;
 				})[0];
 				return {
-				name : i.name,
-				id : i.name,
-				data : members 
+					name : i.name,
+					id : i.name,
+					data : members
 				};
 			})
 		};
@@ -507,20 +507,20 @@ function plotUtilDetails(util, limit, order) {
 		var seriesData = [];
 		var drilldownData = {
 			series : utils().order(resource + order).limit(limit).map(function(i) {
-                var members = utils({name:i.name}).map(function(j) {
+				var members = utils({name:i.name}).map(function(j) {
 				var times = [];
-                for (k in j.muTime ) {
+				for (k in j.muTime ) {
 				times.push({
 				name : k,
 				y : j.muTime[k]
 				});
-                }
+				}
 				return times;
 				})[0];
 				return {
-				name : i.name,
-				id : i.name,
-				data : members 
+					name : i.name,
+					id : i.name,
+					data : members
 				};
 			})
 		};
@@ -552,9 +552,9 @@ function plotUtilDetails(util, limit, order) {
 		title : {
 			text : titleName
 		},
-        subtitle : {
-            text : 'Click an instance to drilldown'
-        },
+		subtitle : {
+			text : 'Click an instance to drilldown'
+		},
 		xAxis : {
 			labels : {
 				rotation : 45
@@ -584,19 +584,19 @@ function plotPerGroup(group, test, metric) {
 	$.getJSON(groupDataFile, function(d) {
 		groupResults = TAFFY();
 		$.each(d, function(k, v) {
-            var members = [];
-            for (var i in v[test]['members']) {
-                members.push({
-                    name : i,
-                    y : v[test]['members'][i][metric]
-                });
-            }
+			var members = [];
+			for (var i in v[test]['members']) {
+				members.push({
+					name : i,
+					y : v[test]['members'][i][metric]
+				});
+			}
 			groupResults.insert({
 				'group' : k,
-                'min' : v[test]['min'+metric[0]],
-                'max' : v[test]['max'+metric[0]],
-                'mean' : v[test]['mean'+metric[0]],
-                'members' : members
+				'min' : v[test]['min' + metric[0]],
+				'max' : v[test]['max' + metric[0]],
+				'mean' : v[test]['mean' + metric[0]],
+				'members' : members
 			});
 		});
 		var el = "#" + group + "_chart";
@@ -633,22 +633,22 @@ function plotPerGroup(group, test, metric) {
 				colorByPoint : true,
 				name : Metrics[metric],
 				yAxis : 0,
-				data : groupResults().order('mean desc').map(function(i){
-                    return {
-                        drilldown : i.group,
-                        name : i.group,
-                        y : i.mean
-                    };
-                })
+				data : groupResults().order('mean desc').map(function(i) {
+					return {
+						drilldown : i.group,
+						name : i.group,
+						y : i.mean
+					};
+				})
 			}],
 			drilldown : {
-				series : groupResults().map(function(i){
-                    return {
-                        name : i.group,
-                        id : i.group,
-                        data : i.members
-                    };
-                })
+				series : groupResults().map(function(i) {
+					return {
+						name : i.group,
+						id : i.group,
+						data : i.members
+					};
+				})
 			}
 		});
 		$(el).highcharts().setSize(1000, 300);
@@ -658,9 +658,9 @@ function plotPerGroup(group, test, metric) {
 				text : null
 			},
 			xAxis : {
-				categories : groupResults().order('mean desc').map(function(i){
-                    return i.group;
-                })
+				categories : groupResults().order('mean desc').map(function(i) {
+					return i.group;
+				})
 			},
 			yAxis : [{
 				title : {
@@ -686,17 +686,17 @@ function plotPerGroup(group, test, metric) {
 			series : [{
 				name : 'Min-Max range',
 				type : 'arearange',
-				data : groupResults().order('mean desc').map(function(i){
-                    return [i.min, i.max];
-                }),
+				data : groupResults().order('mean desc').map(function(i) {
+					return [i.min, i.max];
+				}),
 				yAxis : 0
 			}, {
 				color : colors[1],
 				name : 'Number of instances',
 				type : 'line',
-				data : groupResults().order('mean desc').map(function(i){
-                    return i.members.length;
-                }),
+				data : groupResults().order('mean desc').map(function(i) {
+					return i.members.length;
+				}),
 				yAxis : 1
 			}],
 		});
@@ -843,45 +843,45 @@ function plotUnixBenchs(test, sorter, limit, order) {
 
 function plotScatter(test, metric) {
 	if (test != 'x264') {
-        var data = unixbenchs().map(function(i){
-            return i;
-        });
-        var cost = test+'_'+'cost_z';
-        var perf = test+'_'+'perf_z';
-        var alpha = 1;
+		var data = unixbenchs().map(function(i) {
+			return i;
+		});
+		var cost = test + '_' + 'cost_z';
+		var perf = test + '_' + 'perf_z';
+		var alpha = 1;
 	} else {
-        var data = x264s().map(function(i){
-            return i;
-        });
-        var cost = 'costZ';
-        var perf = 'timeZ';
-        var alpha = -1;
+		var data = x264s().map(function(i) {
+			return i;
+		});
+		var cost = 'costZ';
+		var perf = 'timeZ';
+		var alpha = -1;
 	}
 	var ec2paravirtuals = [];
 	var rackparavirtuals = [];
 	var hvms = [];
-    for (var i=0; i<data.length; i++){
-        if (data[i]['cloud']=='EC2') {
-            if ( -1 < data[i]['name'].indexOf('hvm') ){
-                hvms.push({
-                    name : data[i]['name'],
-			        x : parseFloat(data[i][cost].toFixed(2)),
-			        y : parseFloat(alpha*data[i][perf].toFixed(2))
-                });
-            } else {
-                ec2paravirtuals.push({
-                    name : data[i]['name'],
-                    x : parseFloat(data[i][cost].toFixed(2)),
-                    y : parseFloat(alpha*data[i][perf].toFixed(2))
-                });
-            }
-        } else {
-            rackparavirtuals.push({
-                name : data[i]['name'],
-                x : parseFloat(data[i][cost].toFixed(2)),
-                y : parseFloat(alpha*data[i][perf].toFixed(2))
-            });
-        }
+	for (var i = 0; i < data.length; i++) {
+		if (data[i]['cloud'] == 'EC2') {
+			if (-1 < data[i]['name'].indexOf('hvm')) {
+				hvms.push({
+					name : data[i]['name'],
+					x : parseFloat(data[i][cost].toFixed(2)),
+					y : parseFloat(alpha * data[i][perf].toFixed(2))
+				});
+			} else {
+				ec2paravirtuals.push({
+					name : data[i]['name'],
+					x : parseFloat(data[i][cost].toFixed(2)),
+					y : parseFloat(alpha * data[i][perf].toFixed(2))
+				});
+			}
+		} else {
+			rackparavirtuals.push({
+				name : data[i]['name'],
+				x : parseFloat(data[i][cost].toFixed(2)),
+				y : parseFloat(alpha * data[i][perf].toFixed(2))
+			});
+		}
 	}
 	$('#' + currentTab + '_chart').highcharts({
 		chart : {
@@ -889,12 +889,12 @@ function plotScatter(test, metric) {
 			zoomType : 'xy'
 		},
 		title : {
-            text : Tests[test] + ': Performance vs. Cost'
+			text : Tests[test] + ': Performance vs. Cost'
 		},
 		xAxis : {
 			title : {
 				enabled : true,
-				text : 'Cost Z Score' 
+				text : 'Cost Z Score'
 			},
 			startOnTick : true,
 			endOnTick : true,
@@ -964,7 +964,7 @@ function replot() {
 		plotUtils(currentTab, currentLimit, currentOrder);
 	} else if (-1 < UtilDetails.indexOf(currentTab)) {
 		plotUtilDetails(currentTab, currentLimit, currentOrder);
-	} else if ( currentTab == 'scatterVirt' ) {
+	} else if (currentTab == 'scatterVirt') {
 		plotScatter(currentTest, currentSorter);
 	} else if (currentTab == 'unixBench') {
 		plotUnixBenchs(currentTest, currentSorter, currentLimit, currentOrder);
@@ -1003,7 +1003,7 @@ $(function() {
 				cloud : v['cloud'],
 				memSize : v['memory_size'],
 				memUtil : v['memory_utl'],
-                muTime : v['memory_utl_time'],
+				muTime : v['memory_utl_time'],
 				vcpuUtil : v['cpu_utl'],
 				cuCore : v['cpu_utl_core'],
 				cuTime : v['cpu_utl_time'],
@@ -1082,7 +1082,7 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#xsortbtns').show();
 		$('#togglebtns').show();
 		plotx264(currentSorter, currentLimit, currentOrder);
-	} else if ( currentTab == 'scatterVirt') {
+	} else if (currentTab == 'scatterVirt') {
 		// If in the scatter tabs
 		$('#limitter').hide();
 		$('#grpbtns').hide();

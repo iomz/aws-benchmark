@@ -18,67 +18,103 @@
 		<![endif]-->
 	</head>
 	<body>
-		<h1>Cloud Stack Evaluation</h1>
-		<ul class="nav nav-tabs" id="Tabs">
-			<li class="active">
-				<a href="#x264" data-toggle="tab">x264</a>
-			</li>
-			<li>
-				<a href="#memUtil" data-toggle="tab">Memory Util</a>
-			</li>
-			<li>
-				<a href="#memUtilTime" data-toggle="tab">Memory Util Time</a>
-			</li>
-			<li>
-				<a href="#vcpuUtil" data-toggle="tab">vCPU Util</a>
-			</li>
-			<li>
-				<a href="#vcpuUtilCore" data-toggle="tab">vCPU Util Core</a>
-			</li>
-			<li>
-				<a href="#vcpuUtilTime" data-toggle="tab">vCPU Util Time</a>
-			</li>
-			<li>
-				<a href="#unixBench" data-toggle="tab">UnixBench</a>
-			</li>
-			<li>
-				<a href="#size" data-toggle="tab">Size Groups</a>
-			</li>
-			<li>
-				<a href="#type" data-toggle="tab">Type Groups</a>
-			</li>
-			<li>
-				<a href="#family" data-toggle="tab">Family Groups</a>
-			</li>
-			<li>
-				<a href="#vcpu" data-toggle="tab">vCPU Groups</a>
-			</li>
-			<li>
-				<a href="#memoryRange" data-toggle="tab">Memory Groups</a>
-			</li>
-			<li>
-				<a href="#priceRange" data-toggle="tab">Price Groups</a>
-			</li>
-			<li>
-				<a href="#scatterVirt" data-toggle="tab">Virtualizations in Scatter</a>
-			</li>
-		</ul>
+		<nav class="navbar navbar-default" role="navigation">
+			<div class="container-fluid">
+				<!-- Brand and toggle get grouped for better mobile display -->
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+						<span class="sr-only">Toggle navigation</span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand" href="#">Cloud Stack Evaluation</a>
+				</div>
+
+				<!-- Collect the nav links, forms, and other content for toggling -->
+				<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+					<ul class="nav navbar-nav">
+						<li class="active">
+							<a href="#x264" data-toggle="tab">x264</a>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">x264 Utilization <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li>
+									<a href="#memUtil" data-toggle="tab">Memory Util</a>
+								</li>
+								<li>
+									<a href="#memUtilTime" data-toggle="tab">Memory Util Time</a>
+								</li>
+								<li class="divider"></li>
+								<li>
+									<a href="#vcpuUtil" data-toggle="tab">vCPU Util</a>
+								</li>
+								<li>
+									<a href="#vcpuUtilCore" data-toggle="tab">vCPU Util Core</a>
+								</li>
+								<li>
+									<a href="#vcpuUtilTime" data-toggle="tab">vCPU Util Time</a>
+								</li>
+							</ul>
+						</li>
+						<li>
+							<a href="#unixBench" data-toggle="tab">UnixBench</a>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Grouping <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li>
+									<a href="#size" data-toggle="tab">Size Groups</a>
+								</li>
+								<li>
+									<a href="#type" data-toggle="tab">Type Groups</a>
+								</li>
+								<li>
+									<a href="#family" data-toggle="tab">Family Groups</a>
+								</li>
+								<li>
+									<a href="#vcpu" data-toggle="tab">vCPU Groups</a>
+								</li>
+								<li>
+									<a href="#memoryRange" data-toggle="tab">Memory Groups</a>
+								</li>
+								<li>
+									<a href="#priceRange" data-toggle="tab">Price Groups</a>
+								</li>
+
+							</ul>
+						</li>
+						<li>
+							<a href="#scatterVirt" data-toggle="tab">Virtualizations in Scatter</a>
+						</li>
+					</ul>
+					<ul class="nav navbar-nav navbar-right">
+						<form class="navbar-form navbar-left" role="search">
+							<div class="form-group">
+								<input type="text" class="form-control" placeholder="Instance Name">
+							</div>
+						</form>
+					</ul>
+				</div><!-- /.navbar-collapse -->
+			</div><!-- /.container-fluid -->
+		</nav>
 		<div class="input-group" id="limitter">
 			<span class="input-group-addon">N = </span>
 			<input type="text" class="form-control" id="limitForm" placeholder="N to limit instances">
 		</div>
 		<div class="btn-group" style="margin: 9px 0 5px;" id="testbtns">
 			<button type="button" class="btn btn-primary" id="x264test">
-				X264
+				x264
 			</button>
 			<button type="button" class="btn btn-primary" id="index">
-				Index
+				Index Score
 			</button>
 			<button type="button" class="btn btn-primary" id="dhrystone">
 				Dhrystone
 			</button>
 			<button type="button" class="btn btn-primary" id="double">
-				Double
+				Whetstone
 			</button>
 			<button type="button" class="btn btn-primary" id="execl">
 				Execl
@@ -93,13 +129,13 @@
 				File4096
 			</button>
 			<button type="button" class="btn btn-primary" id="pipethru">
-				PipeThrouput
+				Pipe Throuput
 			</button>
 			<button type="button" class="btn btn-primary" id="pipecs">
-				PipeCS
+				Context Switching
 			</button>
 			<button type="button" class="btn btn-primary" id="process">
-				Process
+				Process Creation
 			</button>
 			<button type="button" class="btn btn-primary" id="shell1">
 				Shell1

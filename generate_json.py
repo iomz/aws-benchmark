@@ -188,7 +188,9 @@ def main():
                 # For UnixBench
                 group_dict = {}
                 for gs in groups:
-                    print gs
+                    #print gs
+                    if gs in ['512mb', 'micro', 't1', 'Micro instances' ]:
+                        continue
                     group_dict[gs] = {}
                     for t in Tests:
                         test_dict = {}
@@ -229,8 +231,6 @@ def main():
                                 members[k]['perf'] = p
                                 members[k]['cost'] = c
                                 members[k]['balance'] = b
-                        if len(members)==0:
-                            continue
                         test_dict['minp'] = minp
                         test_dict['minc'] = minc
                         test_dict['minb'] = minb
@@ -241,11 +241,7 @@ def main():
                         test_dict['meanc'] = sumc/len(members)
                         test_dict['meanb'] = sumb/len(members)
                         test_dict['members'] = members
-                    if len(test_dict) != 0:
                         group_dict[gs][t] = test_dict
-                    else:
-                        del group_dict[gs]
-
                 result_file = 'web/data/group/'+g+'.json'
                 with open(result_file, 'w') as outfile:
                     js.dump(group_dict, fp=outfile, indent=4*' ')

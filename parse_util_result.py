@@ -1,6 +1,8 @@
+from collections import OrderedDict
 from pprint import pprint
 import json
 import simplejson as js
+
 
 res = json.load(open('web/data/util_raw.json', "r"))
 instances = json.load(open('web/data/instances.json', "r"))
@@ -60,7 +62,9 @@ for i in res:
     #pprint(cpu_core_dict)
     for k,v in cpu_time_dict.iteritems():
         cpu_time_dict[k] = sum(v)/len(v)
-    #pprint(cpu_time_dict)
+    od = OrderedDict(sorted(cpu_time_dict.items()))
+    #pprint(od)
+
     
     '''
     # Disk I/O usage
@@ -78,8 +82,7 @@ for i in res:
         'memory_utl' : memory_usage_mean,
         'cpu_utl' : core_sum/core,
         'cpu_utl_core' : cpu_core_dict,
-        'cpu_utl_time' : cpu_time_dict,
-        'ioreq' : tps_dict
+        'cpu_utl_time' : od
     }
 
 with open('web/data/util.json', 'w') as outfile:

@@ -52,15 +52,30 @@ def start_benchmark_instance(conn, instance, u_data, bdm):
     conn.create_tags([i.id], {"Name": instance})
     return instance, i.id
 
-def wait_until_next_hour():
+def wait_until_next(step, minute):
     t = datetime.today()
-    if t.hour == 23:
-        day = t.day + 1
-        hour = 0
+    if minute > t.minute:
+        if t.hour == 23:
+            if step == 0:
+                day = t.day
+                hour = 23
+            elif step == 1:
+                day = t.day + 1
+                hour = 0
+        elif t.hour != 23:
+            day = t.day
+            if step == 0:
+                hour = t.hour
+            elif step == 1:
+                hour = t.hour + 1
     else:
-        day = t.day
-        hour = t.hour + 1
-    f = datetime(t.year,t.month,day,hour,0,0)
+        if t.hour == 23:
+            day = t.day + 1
+            hour = 0
+        elif t.hour != 23:
+            day = t.day
+            hour = t.hour + 1
+    f = datetime(t.year,t.month,day,hour,minute,0)
     sys.stdout.write('*** Waiting until ')
     print f
     sleep((f-t).seconds)
@@ -78,14 +93,15 @@ def main():
         elif option == 'iperf':
             u_data_model = 'iperf/iperf_userscript_model.dat'
             iperf_server = sys.argv[2]
+            minute = int(sys.argv[3])
         else:
             print "unrecognized option: %s" % option
             print "usage: %s [unixbench|x264] [trial]" % sys.argv[0]
-            print "usage: %s [iperf] [iperf-server]" % sys.argv[0]
+            print "usage: %s [iperf] [iperf-server] [minute]" % sys.argv[0]
             sys.exit(1)
     else:
         print "usage: %s [unixbench|x264] [trial]" % sys.argv[0]
-        print "usage: %s [iperf] [iperf-server]" % sys.argv[0]
+        print "usage: %s [iperf] [iperf-server] [minute]" % sys.argv[0]
         sys.exit(1)
 
     '''
@@ -131,10 +147,12 @@ def main():
     conn = boto.ec2.connect_to_region(region)
     
     # For manual list of instances, modify here
-    instances = ['t1.micro_paravirtual']
+    instances = ['c3.large_hvm','c3.2xlarge_hvm','c3.4xlarge_hvm','c3.8xlarge_hvm','c3.8xlarge_paravirtual','cc2.8xlarge_hvm']
+    #instances = ['t1.micro_paravirtual']
     #completed = ['t1.micro_paravirtual']
     num_instances = len(instances)
     if option == 'iperf':
+        wait_until_next(0, minute)
         while True:
             runnings = []
             for i in instances:
@@ -142,16 +160,17 @@ def main():
                 u_data = base64.b64encode(userscript)
                 res, i_id = start_benchmark_instance(conn, i, u_data, bdm)
                 if res is not None:
-                    print res, i_id
                     runnings.append(i_id)
-                # Sleep 60 seconds to give instances interval
-                sleep(60)
-            # Wait 10 mins for instances to complete iperf, then terminate them
-            sleep(60*10)
+                # Sleep 2 mins to give interval between instances
+                sleep(60*3)
+            # Wait 15 mins for the last instance to complete iperf, then terminate in order
+            print '*** Waiting for the instances to complete iperf...'
+            sleep(60*15)
             conn.terminate_instances(runnings)
-            print "Instances terminated"
+            for i in runnings:
+                print "-Instances %s terminated" % i
             # Wait until next hour
-            wait_until_next_hour()
+            wait_until_next(1, minute)
     else:
         while 0 < len(instances):
             for i in instances:

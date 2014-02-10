@@ -17,23 +17,24 @@ def main():
     if len(sys.argv) == 2 and sys.argv[1] == 'check':
         print "*** Checking the table in dynamoDB, create one if not exist..."
         try:
-            logs = Table('iperf', schema=[HashKey('instance_name'),RangeKey('datetime'),])
+            logs = Table('Iperf_logs', schema=[HashKey('instance_name'),RangeKey('datetime'),])
             tmp = logs.describe()
             sys.exit(0)
         except JSONResponseError:
-            logs = Table.create('iperf', schema=[HashKey('instance_name'),RangeKey('datetime'),])
+            logs = Table.create('Iperf_logs', schema=[HashKey('instance_name'),RangeKey('datetime'),])
             sys.exit(1)
-    if len(sys.argv) != 3:
-        print "usage: %s <instance_name> <datetime>" % sys.argv[0]
+    if len(sys.argv) != 4:
+        print "usage: %s <instance_name> <datetime> <iperf_server>" % sys.argv[0]
         sys.exit(2)
 
     # Store arg lists
     instance_name = sys.argv[1]
     datetime = sys.argv[2]
+    iperf_server = sys.argv[3]
 
     # Retrieve dynamoDB object
     try:
-        logs = Table('iperf', schema=[HashKey('instance_name'),RangeKey('datetime'),])
+        logs = Table('Iperf_logs', schema=[HashKey('instance_name'),RangeKey('datetime'),])
         tmp = logs.describe()
     except JSONResponseError:
         sys.exit(1)
@@ -42,8 +43,9 @@ def main():
     iperf = {}
     iperf['instance_name'] = instance_name
     iperf['datetime'] = datetime
+    iperf['iperf_server'] = iperf_server
     line = open(os.path.dirname(os.path.abspath(__file__))+'/log/'+datetime+'.log','r').readlines()[6]
-    m = re.search(r"sec\s+(\d+\s+\w+)\s+(\d+\.\d+\s+[\w/]+)", line)
+    m = re.search(r"sec\s+(\d+\s+\w+)\s+(\d+\s+[\w/]+)", line)
     transfer = m.group(1)
     bandwidth = m.group(2)
     iperf['transfer'] = transfer

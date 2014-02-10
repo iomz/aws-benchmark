@@ -27,7 +27,8 @@ var Metrics = {
 	'perf_z' : 'Z Score of Performance',
 	'balance' : 'Balance'
 };
-var Utils = ['memUtil', 'vcpuUtil', 'ioUtil'];
+var Utils = ['memUtil', 'vcpuUtil'];
+var UtilDetails = ['vcpuUtilCore', 'vcpuUtilTime'];
 var Groups = ['size', 'type', 'family', 'vcpu', 'memoryRange', 'priceRange'];
 var Sorters = {
 	'perf' : "Actual time elapsed",
@@ -268,53 +269,174 @@ function plotx264(xsorter, limit, order) {
 
 function plotUtils(util, limit, order) {
 	var titleOrder = (order == ' desc') ? 'Best ' : 'Worst ';
+	var yAxisData = [];
+	var seriesData = [];
+	var names = utils().order(util + order).limit(limit).map(function(i) {
+		return i.name;
+	});
+	names.reverse();
+	yAxisData.push({
+		max : 100,
+		min : 0,
+		opposite : true,
+		title : {
+			text : 'Utilization (%)'
+		}
+	});
+	// EC2 column
+	var yDataEC2 = utils().order(util + order).limit(limit).map(function(i) {
+		if (util == 'memUtil')
+			var val = i.memUtil;
+		else if (util == 'vcpuUtil')
+			var val = i.vcpuUtil;
+		return (i.cloud == 'EC2') ? parseFloat(val.toFixed(2)) : 0;
+	});
+	yDataEC2.reverse();
+	seriesData.push({
+		color : colors[6],
+		name : 'EC2: Utilization (%)',
+		data : yDataEC2,
+		yAxis : 0
+	});
+	// Rackspace column
+	var yDataRackspace = utils().order(util + order).limit(limit).map(function(i) {
+		if (util == 'memUtil')
+			var val = i.memUtil;
+		else if (util == 'vcpuUtil')
+			var val = i.vcpuUtil;
+		return (i.cloud == 'Rackspace') ? parseFloat(val.toFixed(2)) : 0;
+	});
+	yDataRackspace.reverse();
+	seriesData.push({
+		color : colors[5],
+		name : 'Rackspace: Utilization (%)',
+		data : yDataRackspace,
+		yAxis : 0
+	});
 	if (util == 'memUtil') {
 		var utilName = 'Memory utilization';
-		var yData = utils().order(util + order).limit(limit).map(function(i) {
-			return {
-				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
-				name : i.name,
-				y : parseFloat(i.memUtil.toFixed(2))
-			};
-		});
+		// Memory Size
 		var memSizes = utils().order(util + order).limit(limit).map(function(i) {
 			return {
 				name : i.name,
 				y : parseFloat(i.memSize.toFixed(2))
 			};
 		});
-		var yAxisData = [{
+		memSizes.reverse();
+		yAxisData.push({
 			title : {
 				text : 'Memory Size (GB)',
 				style : {
 					color : '#1aadce'
 				}
 			}
-		}];
-		memSizes.reverse();
-		var seriesData = [{
+		});
+		seriesData.push({
 			color : '#1aadce',
 			data : memSizes,
-			marker : {
-				enabled : false,
-				states : {
-					hover : {
-						enabled : false
-					},
-					select : {
-						enanled : false
-					}
-				}
-			},
 			name : 'Memory Size (GB)',
 			step : true,
 			type : 'line',
-			zIndex : 1
-		}];
-		var drilldownData = null
+			yAxis : 1,
+		});
+		var memUseds = utils().order(util + order).limit(limit).map(function(i) {
+			return parseFloat(((i.memUtil / 100.0) * i.memSize).toFixed(2));
+		});
+		memUseds.reverse();
+		yAxisData.push({
+			title : {
+				text : 'Memory Used (GB)',
+				style : {
+					color : '#252525'
+				}
+			},
+			opposite : true
+		});
+		seriesData.push({
+			color : '#252525',
+			data : memUseds,
+			name : 'Memory Used (GB)',
+			type : 'line',
+			yAxis : 2
+		});
+
 	} else if (util == 'vcpuUtil') {
 		var utilName = 'vCPU utilization';
-		var yData = utils().order(util + order).limit(limit).map(function(i) {
+		// Number of vCPUs
+		var nCores = utils().order(util + order).limit(limit).map(function(i) {
+			var size = 0, key;
+			for (key in i.cuCore)
+			size++;
+			return {
+				name : i.name,
+				y : size
+			};
+		});
+		nCores.reverse();
+		yAxisData.push({
+			title : {
+				text : 'Number of vCPU',
+				style : {
+					color : '#2DD700'
+				}
+			}
+		});
+		seriesData.push({
+			color : '#2DD700',
+			data : nCores,
+			name : 'Number of vCPU',
+			step : true,
+			type : 'line',
+			yAxis : 1
+		});
+	}
+	var titleName = titleOrder + limit + ' ' + utilName;
+	var el = '#' + util + '_chart';
+	$(el).highcharts({
+		chart : {
+			type : 'column'
+		},
+		title : {
+			text : titleName
+		},
+		xAxis : {
+			categories : names,
+			labels : {
+				rotation : 45
+			},
+		},
+		yAxis : yAxisData,
+		legend : {
+			align : "left",
+			backgroundColor : '#FFF',
+			floating : true,
+			layout : "vertical",
+			verticalAlign : "top",
+			x : 700,
+			y : 50
+		},
+		tooltip : {
+			shared : true
+		},
+		plotOptions : {
+			column : {
+				stacking : 'normal'
+			},
+			series : {
+				borderWidth : 0
+			}
+		},
+		series : seriesData
+	});
+	$(el).highcharts().setSize(1000, 600);
+}
+
+function plotUtilDetails(util, limit, order) {
+	var titleOrder = (order == ' desc') ? 'Best ' : 'Worst ';
+	if (util == 'vcpuUtilCore') {
+		var resource = 'vcpuUtil';
+		var utilName = 'vCPU utilization per cores';
+		var yData = utils().order(resource + order).limit(limit).map(function(i) {
 			return {
 				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
 				drilldown : i.name,
@@ -322,70 +444,63 @@ function plotUtils(util, limit, order) {
 				y : parseFloat(i.vcpuUtil.toFixed(2))
 			};
 		});
-		/*
-		 var nCores = utils().order(util + order).limit(limit).map(function(i) {
-		 var size = 0, key;
-		 for (key in i.cuCore)
-		 size++;
-		 return {
-		 name : i.name,
-		 y : size
-		 };
-		 });
-		 var yAxisData = [{
-		 title : {
-		 text : 'Number of vCPU',
-		 style : {
-		 color : '#2DD700'
-		 }
-		 }
-		 }];
-		 nCores.reverse();
-		 var seriesData = [{
-		 color : '#2DD700',
-		 data : nCores,
-		 marker : {
-		 enabled : false,
-		 states : {
-		 hover : {
-		 enabled : false
-		 },
-		 select : {
-		 enanled : false
-		 }
-		 }
-		 },
-		 name : 'Number of vCPU',
-		 step : true,
-		 type : 'line',
-		 zIndex : 1
-		 }];
-		 */
 		var yAxisData = [];
 		var seriesData = [];
 		var drilldownData = {
-			series : utils().order(util + order).limit(limit).map(function(i) {
+			series : utils().order(resource + order).limit(limit).map(function(i) {
+				var members = utils({name:i.name}).map(function(j) {
+				var cores = [];
+				for ( k in j.cuCore ) {
+				cores.push({
+				name : k,
+				y : j.cuCore[k]['mean']
+				});
+				}
+				return cores;
+				})[0];
 				return {
 					name : i.name,
 					id : i.name,
-					data : utils({name:i.name}).map(function(j) {
-					cores = [];
-					for ( k in j.cuCore ) {
-					cores.push({
-					name : k,
-					y : j.cuCore[k]['mean']
-					});
-					}
-					return cores;
-					})[0]
+					data : members
 				};
 			})
 		};
-	} else if (util == 'ioUtil') {
-		;
+	} else if (util == 'vcpuUtilTime') {
+		var resource = 'vcpuUtil';
+		var utilName = 'vCPU utilization per time frame';
+		var yData = utils().order(resource + order).limit(limit).map(function(i) {
+			return {
+				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
+				drilldown : i.name,
+				name : i.name,
+				y : parseFloat(i.vcpuUtil.toFixed(2))
+			};
+		});
+		var yAxisData = [];
+		var seriesData = [];
+		var drilldownData = {
+			series : utils().order(resource + order).limit(limit).map(function(i) {
+                var members = utils({name:i.name}).map(function(j) {
+				var times = [];
+                for (k in j.cuTime ) {
+				times.push({
+				name : k,
+				y : j.cuTime[k]
+				});
+                }
+				return times;
+				})[0];
+				return {
+				name : i.name,
+				id : i.name,
+				data : members 
+				};
+			})
+		};
 	}
+
 	var titleName = titleOrder + limit + ' ' + utilName;
-	var names = utils().order(util + order).limit(limit).map(function(i) {
+	var names = utils().order(resource + order).limit(limit).map(function(i) {
 		return i.name;
 	});
 	yData.reverse();
@@ -938,6 +1053,8 @@ function replot() {
 		plotPerGroup(currentGroup, currentTest, currentSorter, currentOrder);
 	} else if (-1 < Utils.indexOf(currentTab)) {
 		plotUtils(currentTab, currentLimit, currentOrder);
+	} else if (-1 < UtilDetails.indexOf(currentTab)) {
+		plotUtilDetails(currentTab, currentLimit, currentOrder);
 	} else if ( currentTab in Scatters) {
 		currentScatter = Scatters[currentTab];
 		plotScatter(currentTest, currentScatter, currentSorter);
@@ -1025,6 +1142,16 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#togglebtns').show();
 		currentOrder = ' desc';
 		plotUtils(currentTab, currentLimit, currentOrder);
+	} else if (-1 < UtilDetails.indexOf(currentTab)) {
+		// If in the util tab
+		$('#limitter').show();
+		$('#grpbtns').hide();
+		$('#testbtns').hide();
+		$('#x264test').hide();
+		$('#xsortbtns').hide();
+		$('#togglebtns').show();
+		currentOrder = ' desc';
+		plotUtilDetails(currentTab, currentLimit, currentOrder);
 	} else if (currentTab == 'unixBench') {
 		// If in the UnixBench tab
 		$('#limitter').show();
@@ -1089,6 +1216,8 @@ $('#limitForm').keypress(function(e) {
 		}
 		if (currentTab == 'x264') {
 			plotx264(currentSorter, currentLimit, currentOrder);
+		} else if (-1 < UtilDetails.indexOf(currentTab)) {
+			plotUtilDetails(currentTab, currentLimit, currentOrder);
 		} else if (-1 < Utils.indexOf(currentTab)) {
 			plotUtils(currentTab, currentLimit, currentOrder);
 		} else if (currentTab == 'unixBench') {

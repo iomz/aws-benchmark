@@ -20,21 +20,22 @@ Tests = [
     "index"
 ]
 
-x264_json = 'web/data/x264_stat.json'
+x264_json = 'web/data/x264_stat_inv.json'
 # x264
 res = json.load(open(x264_json, "r"))
 ranks = {}
 for k,v in res.iteritems():
     ranks[k] = {}
     ranks[k]['time'] = v['time']
-    ranks[k]['time_sd'] = v['time_sd']
+    ranks[k]['time_inv'] = v['time_inv']
+    ranks[k]['time_inv_sd'] = v['time_inv_sd']
     ranks[k]['cost'] = v['cost']
     ranks[k]['cost_sd'] = v['cost_sd']
     ranks[k]['cloud'] = v['cloud']
 
 # Show x264 ranks
 balance_dict = {}
-for sort in ['time', 'cost']:
+for sort in ['time_inv', 'cost']:
     # Calculate z-score
     values = []
     value_sum = 0
@@ -49,10 +50,12 @@ for sort in ['time', 'cost']:
     for k in ranks.keys():
         ranks[k][sort+'_z'] = (ranks[k][sort]-mean)/sd
     
+# Calculate the balanced score for x264 and Elastic transcoder
 for k,v in ranks.iteritems():
-    ranks[k]['balance'] =  (-1*v['time_z']) - v['cost_z']
+    ranks[k]['balance'] =  v['time_inv_z'] - v['cost_z']
+    #ranks[k]['balance'] =  v['time_inv_z'] / v['cost_z']
 
-with open('web/data/x264.json', 'w') as outfile:
+with open('web/data/x264_inv.json', 'w') as outfile:
     js.dump(ranks, fp=outfile, indent=4*' ')
 
 # UnixBench
@@ -94,8 +97,10 @@ for test in Tests:
         for k, v in ud.iteritems():
             ud[k][test][metric+'_z'] = (v[test][metric]-mean)/sd
 
+    # Calculate the Balanced score for UnixBench tests
     for k,v in ud.iteritems():
         ud[k][test]['balance'] = v[test]['perf_z'] - v[test]['cost_z']
+        #ud[k][test]['balance'] = v[test]['perf_z'] / v[test]['cost_z']
 
 with open('web/data/unixbench.json', 'w') as outfile:
     js.dump(ud, fp=outfile, indent=4*' ')

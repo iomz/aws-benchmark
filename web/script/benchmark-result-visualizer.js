@@ -9,6 +9,7 @@
  */
 var instances = null;
 var groupResults = null;
+var iperfs = null;
 var x264s = TAFFY();
 var unixbenchs = TAFFY();
 var utils = TAFFY();
@@ -18,6 +19,7 @@ var currentTest = "x264";
 var currentSorter = "balance";
 var currentGroup = "vcpu";
 var currentOrder = ' desc';
+var Dsts = ['nvirginia', 'oregon'];
 var colors = Highcharts.getOptions().colors;
 var Metrics = {
 	'cost' : 'Cost',
@@ -99,10 +101,14 @@ function plotx264(xsorter, limit, order) {
 	} else {
 		var titleSuffix = 'in Balance';
 	}
-	var titleOrder = (order == ' desc') ? 'Best ' : 'Worst ';
+	if (xsorter == 'balance')
+		var titleOrder = (order != ' asec') ? 'Best ' : 'Worst ';
+	else
+		var titleOrder = (order == ' asec') ? 'Best ' : 'Worst ';
 	var balancedName = 'Balanced Score';
 	var ec2ColName = 'EC2: ' + balancedName;
 	var rackColName = 'Rackspace: ' + balancedName;
+	var etColName = 'Elastic Transcoder ' + balancedName
 	var names = x264s().order(sorter + order).limit(limit).map(function(i) {
 		return i.name;
 	});
@@ -118,12 +124,24 @@ function plotx264(xsorter, limit, order) {
 		return parseFloat(val.toFixed(2));
 	});
 	var ec2Col = x264s().order(sorter + order).limit(limit).map(function(i) {
+		if (i.cloud == 'ElasticTranscoder') {
+			return 0;
+		}
 		var val = i.balance;
 		return (i.cloud == 'EC2') ? parseFloat(val.toFixed(2)) : 0;
 	});
 	var rackCol = x264s().order(sorter + order).limit(limit).map(function(i) {
+		if (i.cloud == 'ElasticTranscoder') {
+			return 0;
+		}
 		var val = i.balance;
 		return (i.cloud == 'Rackspace') ? parseFloat(val.toFixed(2)) : 0;
+	});
+	var etCol = x264s().order(sorter + order).limit(limit).map(function(i) {
+		if (i.cloud == 'ElasticTranscoder') {
+			return parseFloat(i.balance.toFixed(2));
+		}
+		return 0;
 	});
 	var series = [{
 		color : colors[6],
@@ -138,6 +156,12 @@ function plotx264(xsorter, limit, order) {
 		yAxis : 0,
 		data : rackCol
 	}, {
+		color : colors[7],
+		name : etColName,
+		type : 'column',
+		yAxis : 0,
+		data : etCol
+	}, {
 		color : colors[3],
 		name : 'Encoding Cost [$]',
 		type : 'line',
@@ -145,7 +169,7 @@ function plotx264(xsorter, limit, order) {
 		data : costs
 	}, {
 		color : colors[4],
-		name : 'Time Ratio compared by c3.8xlarge_hvm',
+		name : 'Time Ratio compared by Elastic Transcoder',
 		type : 'spline',
 		yAxis : 2,
 		data : timeRatios,
@@ -156,6 +180,7 @@ function plotx264(xsorter, limit, order) {
 	timeRatios.reverse();
 	ec2Col.reverse();
 	rackCol.reverse();
+	etCol.reverse();
 	/* If available, plot the SD for the cols */
 	if (sorter == 'cost') {
 		var sds = x264s().order(sorter + order).limit(limit).map(function(i) {
@@ -956,6 +981,62 @@ function plotScatter(test, metric) {
 	$('#' + currentTab + '_chart').highcharts().setSize(1000, 600);
 }
 
+function plotIperf(dst) {
+    if (dst == 'nvirginia')
+        var dstName = 'N.Virginia';
+    else
+        var dstName = 'Oregon';
+	$.getJSON("data/iperf.json", function(d) {
+        iperfs = TAFFY();
+		$.each(d, function(k, v) {
+			iperfs.insert({
+                bandwidthArr : v['bandwidth_arr'],
+                path : k,
+                sDay : v['day'],
+                sHour : v['hour'],
+                sMonth : v['month'],
+                sYear : v['year']
+			});
+		});
+        var cc = 0;
+        var seriesData = iperfs({path:{like:dstName}}).map(function(i){
+            cc++;
+            return {
+                color : colors[cc],
+                data : i.bandwidthArr,
+                name : i.path,
+                pointStart : Date.UTC(i.sYear, i.sMonth-1, i.sDay, i.sHour),
+                pointInterval : 1 * 3600 * 1000
+            };
+        });
+        $('#'+dst+'_chart').highcharts({
+            chart : {
+                type : 'spline',
+                zoomType : 'x'
+            },
+            title : {
+                text : 'Iperf measurement betweenn N.Virginia and ' + dstName
+            },
+            xAxis : {
+                title : {
+                    text : 'Time in EST'
+                },
+                type : 'datetime',
+                maxZoom : 12 * 3600 * 1000
+            },
+            yAxis : {
+                title : {
+                    text : 'Bandwidth (Mbits/sec)'
+                }
+            },
+		    legend : {
+		    },
+            series : seriesData
+        });
+	    $('#'+dst+'_chart').highcharts().setSize(1000, 600);
+	});
+}
+
 function replot() {
 	if (-1 < Groups.indexOf(currentTab)) {
 		currentGroup = currentTab;
@@ -980,7 +1061,7 @@ $(function() {
 	$('#x264test').hide();
 	$('#xsortbtns').show();
 	$('#togglebtns').show();
-	$.getJSON("data/x264.json", function(d) {
+	$.getJSON("data/x264_inv.json", function(d) {
 		$.each(d, function(k, v) {
 			x264s.insert({
 				name : k,
@@ -989,7 +1070,7 @@ $(function() {
 				timeSd : v['time_sd'],
 				cost : v['cost'],
 				costSd : v['cost_sd'],
-				timeZ : v['time_z'],
+				timeZ : v['time_inv_z'],
 				costZ : v['cost_z'],
 				balance : v['balance']
 			});
@@ -1091,29 +1172,27 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#togglebtns').hide();
 		$('#xsortbtns').hide();
 		plotScatter(currentTest, currentSorter);
-	} else {// If in the Home tab
-		if (instances === null) {
-			instances = TAFFY();
-			$.getJSON("data/instances.json", function(d) {
-				$.each(d, function(k, v) {
-					var tmp = v;
-					tmp['name'] = k;
-					instances.insert(tmp);
-				});
-			});
-		}
+	} else if (-1 < Dsts.indexOf(currentTab)) {
+		// If in the scatter tabs
 		$('#limitter').hide();
-		$('#grpbtns').show();
+		$('#grpbtns').hide();
 		$('#testbtns').hide();
 		$('#x264test').hide();
-		$('#xsortbtns').hide();
 		$('#togglebtns').hide();
-		plotGroupVariations(currentGroup);
+		$('#xsortbtns').hide();
+		plotIperf(currentTab);
+	} else {// If in the Home tab
+        ;
 	}
 	//e.relatedTarget; // previous tab
 });
 
-// Input from to limit N
+// Input form for instance info
+$('instanceForm').keypress(function(e) {
+	$('#popover').popover('show');
+});
+
+// Input form to limit N
 $('#limitForm').keypress(function(e) {
 	if (e.which == 13) {
 		currentLimit = parseInt($('#limitForm').prop('value'));

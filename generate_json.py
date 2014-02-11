@@ -3,11 +3,15 @@ from boto.dynamodb2.fields import HashKey, RangeKey
 from boto.dynamodb2.table import Table
 from boto.dynamodb2.exceptions import ConditionalCheckFailedException
 from boto.exception import JSONResponseError
+from collections import OrderedDict
+from datetime import datetime
 from math import sqrt
 from os import mkdir, path
 from pprint import pprint
 from time import sleep
 import json
+import pytz
+import re
 import simplejson as js
 import sys
 
@@ -82,6 +86,7 @@ def main():
             print "*** web/data/instances.json not found! Try ./update_instances.py first! ***"
             sys.exit(1)
 
+        # unixbench mode
         if sys.argv[1] == 'unixbench':
             logs = []
             count = 0
@@ -128,6 +133,8 @@ def main():
                 js.dump(logs, fp=outfile, indent=4*' ')
             print "+ " + result_file + " generated!"
             print "*** Done! ***"
+
+        # group mode
         elif sys.argv[1] == 'group':
             datadir = 'web/data/group'
             if path.isdir(datadir):
@@ -247,8 +254,56 @@ def main():
                     js.dump(group_dict, fp=outfile, indent=4*' ')
                 print "+ " + result_file + " generated!"
             print "*** Done! ***"
+
+        # iperf mode
+        elif sys.argv[1] == 'iperf':
+            iperf_path = {}
+            try:
+                iperf_logs = Table('Iperf_logs')
+                for l in iperf_logs.scan():
+                    client = l['instance_name']
+                    if client == 'c3.large_hvm':
+                        continue
+                    server = l['iperf_server']
+                    m, d, y, h = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
+                    time = datetime(2000+int(y),int(m),int(d),int(h))
+                    bw = re.search(r"(\d+)\s", l['bandwidth']).group(1)
+                    if client not in iperf_path:
+                        iperf_path[client] = {}
+                    if server not in iperf_path[client]:
+                        iperf_path[client][server] = {}
+                    iperf_path[client][server][time] = int(bw)
+            except JSONResponseError:
+                print "No Iperf_logs table was found in DynamoDB"
+                sys.exit(1)
+            s = {}
+            s[u'ec2-54-80-18-214.compute-1.amazonaws.com'] = 'N.Virginia'
+            s[u'ec2-54-213-94-252.us-west-2.compute.amazonaws.com'] = 'Oregon'
+            iperf_dict = {}
+            for k,v in iperf_path.iteritems():
+                for kk,vv in v.iteritems():
+                    path = k + '-' + s[kk]
+                    if path not in iperf_dict:
+                        iperf_dict[path] = {}
+                    dbod = OrderedDict(sorted(vv.items()))
+                    start_time = pytz.utc.localize(dbod.keys()[0]).astimezone(pytz.timezone('US/Eastern'))
+                    iperf_dict[path]['bandwidth_arr'] = dbod.values()
+                    iperf_dict[path]['day'] = start_time.day
+                    iperf_dict[path]['hour'] = start_time.hour
+                    iperf_dict[path]['month'] = start_time.month
+                    iperf_dict[path]['year'] = start_time.year
+            
+            result_file = 'web/data/iperf.json'
+            with open(result_file, 'w') as outfile:
+                js.dump(iperf_dict, fp=outfile, indent=4*' ')
+            print "+ " + result_file + " generated!"
+            print "*** Done! ***"
+
+        # unrecognized mode
         else:
             print "usage: %s [unixbench|group]" % sys.argv[0]
+
+    # no mode provided
     else:
         print "usage: %s [unixbench|group]" % sys.argv[0]
 

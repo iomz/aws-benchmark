@@ -88,11 +88,22 @@
 						<li>
 							<a href="#scatterVirt" data-toggle="tab">Virtualizations in Scatter</a>
 						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Iperf <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li>
+									<a href="#nvirginia" data-toggle="tab">N.Virginia</a>
+								</li>
+						        <li>
+						        	<a href="#oregon" data-toggle="tab">Oregon</a>
+                                </li>
+                            </ul>
+                        </li>
 					</ul>
 					<ul class="nav navbar-nav navbar-right">
-						<form class="navbar-form navbar-left" role="search">
+						<form class="navbar-form navbar-left" role="search" data-container="body" data-toggle="popover" data-placement="bottom" data-content="test" id="popover">
 							<div class="form-group">
-								<input type="text" class="form-control" placeholder="Instance Name">
+								<input type="text" class="form-control" id="instanceForm" placeholder="Instance Name">
 							</div>
 						</form>
 					</ul>
@@ -104,7 +115,7 @@
 			<input type="text" class="form-control" id="limitForm" placeholder="N to limit instances">
 		</div>
 		<div class="btn-group" style="margin: 9px 0 5px;" id="testbtns">
-			<button type="button" class="btn btn-primary" id="x264test">
+			<button type="button" class="btn btn-warning" id="x264test">
 				x264
 			</button>
 			<button type="button" class="btn btn-primary" id="index">
@@ -211,6 +222,12 @@
 			</div>
 			<div class="tab-pane fade" id="scatterVirt">
 				<div id="scatterVirt_chart" class="margin: 0 auto"></div>
+			</div>
+			<div class="tab-pane fade" id="nvirginia">
+				<div id="nvirginia_chart" class="margin: 0 auto"></div>
+			</div>
+			<div class="tab-pane fade" id="oregon">
+				<div id="oregon_chart" class="margin: 0 auto"></div>
 			</div>
 		</div>
 		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->

@@ -265,8 +265,10 @@ def main():
                     if client == 'c3.large_hvm':
                         continue
                     server = l['iperf_server']
-                    m, d, y, h = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
-                    time = datetime(2000+int(y),int(m),int(d),int(h))
+                    m, d, y, h, mi = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
+                    #if int(h)%2==0:
+                    #    continue
+                    time = datetime(2000+int(y),int(m),int(d),int(h),int(mi))
                     bw = re.search(r"(\d+)\s", l['bandwidth']).group(1)
                     if client not in iperf_path:
                         iperf_path[client] = {}
@@ -276,6 +278,7 @@ def main():
             except JSONResponseError:
                 print "No Iperf_logs table was found in DynamoDB"
                 sys.exit(1)
+            #pprint(iperf_path)
             s = {}
             s[u'ec2-54-80-18-214.compute-1.amazonaws.com'] = 'N.Virginia'
             s[u'ec2-54-213-94-252.us-west-2.compute.amazonaws.com'] = 'Oregon'
@@ -286,12 +289,19 @@ def main():
                     if path not in iperf_dict:
                         iperf_dict[path] = {}
                     dbod = OrderedDict(sorted(vv.items()))
-                    start_time = pytz.utc.localize(dbod.keys()[0]).astimezone(pytz.timezone('US/Eastern'))
-                    iperf_dict[path]['bandwidth_arr'] = dbod.values()
-                    iperf_dict[path]['day'] = start_time.day
-                    iperf_dict[path]['hour'] = start_time.hour
-                    iperf_dict[path]['month'] = start_time.month
-                    iperf_dict[path]['year'] = start_time.year
+                    db_arr = []
+                    for d,b in dbod.iteritems():
+                        dt = pytz.utc.localize(d).astimezone(pytz.timezone('US/Eastern'))
+                        #dts = dt.year+dt.month+dt.day+dt.hour+dt.minute
+                        point = {}
+                        point['bandwidth'] = b
+                        point['year'] = dt.year
+                        point['month'] = dt.month
+                        point['day'] = dt.day
+                        point['hour'] = dt.hour
+                        point['minute'] = dt.minute
+                        db_arr.append(point)
+                    iperf_dict[path] = db_arr
             
             result_file = 'web/data/iperf.json'
             with open(result_file, 'w') as outfile:
@@ -301,11 +311,11 @@ def main():
 
         # unrecognized mode
         else:
-            print "usage: %s [unixbench|group]" % sys.argv[0]
+            print "usage: %s [unixbench|group|iperf]" % sys.argv[0]
 
     # no mode provided
     else:
-        print "usage: %s [unixbench|group]" % sys.argv[0]
+        print "usage: %s [unixbench|group|iperf]" % sys.argv[0]
 
 if __name__ == "__main__":
     main()

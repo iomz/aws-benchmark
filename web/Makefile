@@ -3,6 +3,10 @@ all:
 	scp script/benchmark-result-visualizer.js cto:/var/www/cloud-eval/script/
 	#scp style.css cto:/var/www/cloud-eval/
 
+.PHONY: iperf
+iperf:
+	 scp data/iperf.json cto-virl:/var/www/cloud-eval/data/
+
 .PHONY: data
 data:
 	 tar zcvf jsons.tgz data/*

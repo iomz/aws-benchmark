@@ -7,6 +7,7 @@
 
  Parse benchmark json results to TaffyDB and plot the figure with Highcharts.js
  */
+var bw = null;
 var instances = null;
 var groupResults = null;
 var iperfs = null;
@@ -982,58 +983,66 @@ function plotScatter(test, metric) {
 }
 
 function plotIperf(dst) {
-    if (dst == 'nvirginia')
-        var dstName = 'N.Virginia';
-    else
-        var dstName = 'Oregon';
+	if (dst == 'nvirginia') {
+		var dstName = 'N.Virginia';
+		var yMax = 10000;
+	} else {
+		var dstName = 'Oregon';
+		var yMax = 1000;
+	}
 	$.getJSON("data/iperf.json", function(d) {
-        iperfs = TAFFY();
+		iperfs = TAFFY();
 		$.each(d, function(k, v) {
 			iperfs.insert({
-                bandwidthArr : v['bandwidth_arr'],
-                path : k,
-                sDay : v['day'],
-                sHour : v['hour'],
-                sMonth : v['month'],
-                sYear : v['year']
+				bw : v,
+				path : k
 			});
 		});
-        var cc = 0;
-        var seriesData = iperfs({path:{like:dstName}}).map(function(i){
-            cc++;
-            return {
-                color : colors[cc],
-                data : i.bandwidthArr,
-                name : i.path,
-                pointStart : Date.UTC(i.sYear, i.sMonth-1, i.sDay, i.sHour),
-                pointInterval : 1 * 3600 * 1000
-            };
-        });
-        $('#'+dst+'_chart').highcharts({
-            chart : {
-                type : 'spline',
-                zoomType : 'x'
-            },
-            title : {
-                text : 'Iperf measurement betweenn N.Virginia and ' + dstName
-            },
-            xAxis : {
-                title : {
-                    text : 'Time in EST'
-                },
-                type : 'datetime',
-                maxZoom : 12 * 3600 * 1000
-            },
-            yAxis : {
-                title : {
-                    text : 'Bandwidth (Mbits/sec)'
-                }
-            },
-		    legend : {
-		    },
-            series : seriesData
-        });
-	    $('#'+dst+'_chart').highcharts().setSize(1000, 600);
+		var cc = 0;
+		var seriesData = iperfs({
+			path : {
+				like : dstName
+			}
+		}).map(function(i) {
+			cc++;
+			var bwArr = [];
+			for (var d = 0; d < i.bw.length; d++) {
+				bwArr.push([Date.UTC(i.bw[d]['year'], i.bw[d]['month'] - 1, i.bw[d]['day'], i.bw[d]['hour'], i.bw[d]['minute']), i.bw[d]['bandwidth']]);
+			}
+			bw = bwArr;
+			return {
+				color : colors[cc],
+				data : bwArr,
+				name : i.path,
+				step : true
+			};
+		});
+		$('#' + dst + '_chart').highcharts({
+			chart : {
+				type : 'line',
+				zoomType : 'x'
+			},
+			title : {
+				text : 'Iperf measurement betweenn N.Virginia and ' + dstName
+			},
+			xAxis : {
+				title : {
+					text : 'Time in EST'
+				},
+				type : 'datetime',
+				maxZoom : 6 * 3600 * 1000
+			},
+			yAxis : {
+				max : yMax,
+				title : {
+					text : 'Bandwidth (Mbits/sec)'
+				}
+			},
+			legend : {
+			},
+			series : seriesData
+		});
+		$('#' + dst + '_chart').highcharts().setSize(1000, 600);
 	});
 }
 
@@ -1182,7 +1191,7 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#xsortbtns').hide();
 		plotIperf(currentTab);
 	} else {// If in the Home tab
-        ;
+		;
 	}
 	//e.relatedTarget; // previous tab
 });

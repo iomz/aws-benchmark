@@ -78,7 +78,7 @@ for v in res:
     else:
         if v['test'] not in ud[k]:
             ud[k][v['test']] = {}
-    ud[k][v['test']]['cost'] = v['priceRatio']
+    ud[k][v['test']]['cost'] = v['price']
     ud[k][v['test']]['perf'] = v['mean']
     ud[k][v['test']]['perf_err'] = v['sd'] 
 

@@ -22,6 +22,12 @@ region = 'us-east-1'
 k_name = 'iomz@cisco-macbook'
 s_grp = 'default'
 
+# Iperf server info
+iperfs = {
+    'i-39ceba17' : 'us-east-1',
+    'i-3250c43a' : 'us-west-2'
+}
+
 def start_benchmark_instance(conn, instance, u_data, bdm):
     if 'paravirtual' in instance:
         ami = paravirtual_ami
@@ -153,23 +159,39 @@ def main():
         wait_until_next(0, minute)
         while True:
             runnings = []
+            iperf_servers = 'declare -a arr=('
             # Start Iperf servers here
+            for sid, sregion in iperfs.iteritems():
+                co = boto.ec2.connect_to_region(sregion)
+                co.start_instances(sid)
+                print '+Stating instance %s...'%sid
+                while co.get_only_instances(sid)[0].state_code != 16: # 16 (running)
+                    sleep(3)
+                iperf_servers += "\"" + co.get_only_instances(sid)[0].public_dns_name + "\" "
+            iperf_servers += ")\n"
+
             for i in instances:
-                userscript = "#!/bin/sh\nINSTANCE_NAME=%s\n"%(i) + open(u_data_model,'r').read()
+                userscript = "#!/bin/sh\nINSTANCE_NAME=%s\n"%(i) + iperf_servers + open(u_data_model,'r').read()
                 u_data = base64.b64encode(userscript)
                 res, i_id = start_benchmark_instance(conn, i, u_data, bdm)
                 if res is not None:
                     runnings.append(i_id)
-                # Sleep 5 mins to give interval between instances
-                sleep(60*5)
-            # Wait 15 mins for the last instance to complete iperf, then terminate in order
+                # Sleep 6 mins to give interval between instances
+                sleep(60*6)
             print '*** Waiting for the instances to complete iperf...'
-            sleep(60*15)
+            while conn.get_only_instances(i_id)[0].state_code != 80: # 80 (stopped)
+                sleep(30)
             conn.terminate_instances(runnings)
             for i in runnings:
                 print "-Instances %s terminated" % i
+            # Stop Iperf servers here
+            for sid, sregion in iperfs.iteritems():
+                co = boto.ec2.connect_to_region(sregion)
+                co.stop_instances(sid)
+                print '-Stopping instance %s...'%sid
+                while co.get_only_instances(sid)[0].state_code != 80: # 80 (stopped)
+                    sleep(3)
             # Wait until next hour
-            # Terminate Iperf servers here
             wait_until_next(1, minute)
     else:
         while 0 < len(instances):

@@ -985,10 +985,10 @@ function plotScatter(test, metric) {
 function plotIperf(dst) {
 	if (dst == 'nvirginia') {
 		var dstName = 'N.Virginia';
-		var yMax = 10000;
+		var yMax = 3000;
 	} else {
 		var dstName = 'Oregon';
-		var yMax = 1000;
+		var yMax = 3000;
 	}
 	$.getJSON("data/iperf.json", function(d) {
 		iperfs = TAFFY();
@@ -1034,6 +1034,7 @@ function plotIperf(dst) {
 			},
 			yAxis : {
 				max : yMax,
+				min : 0,
 				title : {
 					text : 'Bandwidth (Mbits/sec)'
 				}

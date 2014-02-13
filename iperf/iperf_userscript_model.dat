@@ -1,3 +1,6 @@
+IPERF_SERVER1=ec2-54-80-18-214.compute-1.amazonaws.com
+IPERF_SERVER2=ec2-54-213-94-252.us-west-2.compute.amazonaws.com
+
 # user data for benchmark: Iperf
 echo $INSTANCE_NAME > /var/local/instance_name
 
@@ -22,7 +25,8 @@ fi
 python ~/upload_iperf_log.py check
 
 # Run iperf benchmark
-~/run_iperf.sh $IPERF_SERVER
+~/run_iperf.sh $IPERF_SERVER1
+~/run_iperf.sh $IPERF_SERVER2
 
 # Halt
 halt

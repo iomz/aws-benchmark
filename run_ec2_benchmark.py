@@ -92,8 +92,7 @@ def main():
             trial = int(sys.argv[2])
         elif option == 'iperf':
             u_data_model = 'iperf/iperf_userscript_model.dat'
-            iperf_server = sys.argv[2]
-            minute = int(sys.argv[3])
+            minute = int(sys.argv[2])
         else:
             print "unrecognized option: %s" % option
             print "usage: %s [unixbench|x264] [trial]" % sys.argv[0]
@@ -147,22 +146,22 @@ def main():
     conn = boto.ec2.connect_to_region(region)
     
     # For manual list of instances, modify here
-    instances = ['c3.large_hvm','c3.2xlarge_hvm','c3.4xlarge_hvm','c3.8xlarge_hvm','c3.8xlarge_paravirtual','cc2.8xlarge_hvm']
-    #instances = ['t1.micro_paravirtual']
+    instances = ['c3.large_hvm','c3.2xlarge_hvm','c3.8xlarge_hvm','c3.8xlarge_paravirtual','cc2.8xlarge_hvm']
     #completed = ['t1.micro_paravirtual']
     num_instances = len(instances)
     if option == 'iperf':
         wait_until_next(0, minute)
         while True:
             runnings = []
+            # Start Iperf servers here
             for i in instances:
-                userscript = "#!/bin/sh\nINSTANCE_NAME=%s\nIPERF_SERVER=%s\n"%(i,iperf_server) + open(u_data_model,'r').read()
+                userscript = "#!/bin/sh\nINSTANCE_NAME=%s\n"%(i) + open(u_data_model,'r').read()
                 u_data = base64.b64encode(userscript)
                 res, i_id = start_benchmark_instance(conn, i, u_data, bdm)
                 if res is not None:
                     runnings.append(i_id)
-                # Sleep 2 mins to give interval between instances
-                sleep(60*3)
+                # Sleep 5 mins to give interval between instances
+                sleep(60*5)
             # Wait 15 mins for the last instance to complete iperf, then terminate in order
             print '*** Waiting for the instances to complete iperf...'
             sleep(60*15)
@@ -170,6 +169,7 @@ def main():
             for i in runnings:
                 print "-Instances %s terminated" % i
             # Wait until next hour
+            # Terminate Iperf servers here
             wait_until_next(1, minute)
     else:
         while 0 < len(instances):

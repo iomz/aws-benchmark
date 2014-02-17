@@ -264,7 +264,7 @@ def main():
                     client = l['instance_name']
                     if client == 'c3.large_hvm':
                         continue
-                    server = 'N.Virginia' if 'west' in l['iperf_server'] else 'Oregon'
+                    server = 'Oregon' if 'west' in l['iperf_server'] else 'N.Virginia'
                     m, d, y, h, mi = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
                     #if int(h)%2==0:
                     #    continue

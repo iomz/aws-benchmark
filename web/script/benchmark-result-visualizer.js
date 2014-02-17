@@ -984,7 +984,7 @@ function plotScatter(test, metric) {
 function plotIperf(dst) {
 	if (dst == 'nvirginia') {
 		var dstName = 'N.Virginia';
-		var yMax = 3000;
+		var yMax = 10000;
 	} else {
 		var dstName = 'Oregon';
 		var yMax = 3000;

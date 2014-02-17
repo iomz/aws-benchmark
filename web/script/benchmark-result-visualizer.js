@@ -7,7 +7,6 @@
 
  Parse benchmark json results to TaffyDB and plot the figure with Highcharts.js
  */
-var bw = null;
 var instances = null;
 var groupResults = null;
 var iperfs = null;
@@ -1009,7 +1008,6 @@ function plotIperf(dst) {
 			for (var d = 0; d < i.bw.length; d++) {
 				bwArr.push([Date.UTC(i.bw[d]['year'], i.bw[d]['month'] - 1, i.bw[d]['day'], i.bw[d]['hour'], i.bw[d]['minute']), i.bw[d]['bandwidth']]);
 			}
-			bw = bwArr;
 			return {
 				color : colors[cc],
 				data : bwArr,

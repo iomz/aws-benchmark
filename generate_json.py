@@ -264,7 +264,7 @@ def main():
                     client = l['instance_name']
                     if client == 'c3.large_hvm':
                         continue
-                    server = l['iperf_server']
+                    server = 'N.Virginia' if 'west' in l['iperf_server'] else 'Oregon'
                     m, d, y, h, mi = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
                     #if int(h)%2==0:
                     #    continue
@@ -279,13 +279,10 @@ def main():
                 print "No Iperf_logs table was found in DynamoDB"
                 sys.exit(1)
             #pprint(iperf_path)
-            s = {}
-            s[u'ec2-54-80-18-214.compute-1.amazonaws.com'] = 'N.Virginia'
-            s[u'ec2-54-213-94-252.us-west-2.compute.amazonaws.com'] = 'Oregon'
             iperf_dict = {}
             for k,v in iperf_path.iteritems():
                 for kk,vv in v.iteritems():
-                    path = k + '-' + s[kk]
+                    path = k + '-' + kk
                     if path not in iperf_dict:
                         iperf_dict[path] = {}
                     dbod = OrderedDict(sorted(vv.items()))

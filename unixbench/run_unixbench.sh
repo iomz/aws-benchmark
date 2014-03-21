@@ -14,7 +14,6 @@ do
   echo "*** UnixBench trial $TRIED started!"
   cd ~/UnixBench/
   ./Run &> ~/log/${IDESC}_${TRIED}.log
-  python ~/upload_unixbench_log.py $IDESC $TRIED
   echo "*** UnixBench trial $TRIED finished!"
   TRIED=`expr $TRIED + 1`
   echo $TRIED > ~/unixbench_tried

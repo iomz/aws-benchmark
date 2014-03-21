@@ -1,5 +1,5 @@
 #!/bin/sh
-TRIAL=3
+TRIAL=5
 INSTANCE_NAME=nimbus_XL
 
 # Prepare the dependencies (for RedHat linux only)
@@ -14,15 +14,6 @@ wget -O - https://byte-unixbench.googlecode.com/files/UnixBench5.1.3.tgz |tar zx
 # Register benchmark
 echo "~/run_unixbench.sh $TRIAL" >> /etc/rc.local
 echo $INSTANCE_NAME > /var/local/instance_name
-
-# If boto is not installed, install it
-if [ ! `python ~/check_boto.py` ]; then
-  git clone git://github.com/boto/boto.git ~/boto
-  cd ~/boto
-  python ~/boto/setup.py install
-  echo '*** boto installed'
-  python ~/check_boto.py # create a table based on instance_name
-fi
 
 # Compile the UnixBench
 cd ~/UnixBench

@@ -361,6 +361,27 @@ def update_instance_list(cloud):
             }
             instance_dict[instance_name] = instance
 
+        # Parse Nimbus info json file
+        nimbus_list = json.load(open("Nimbus_instances.json","r"))
+        for i in nimbus_list:
+            instance = {
+                Specs[0]: i['name'],
+                Specs[1]: i['family'],
+                Specs[2]: i['cloud'],
+                Specs[3]: i['virt'],
+                Specs[4]: i['ebs'],
+                Specs[5]: i['vcpu'],
+                Specs[6]: i['memory'],
+                Specs[7]: i['price'],
+                Specs[8]: i['storage'],
+                Specs[9]: float('0'),
+                Specs[10]: 'N/A',
+                Specs[11]: 'N/A',
+                Specs[12]: get_memory_range(i['memory']),
+                Specs[13]: get_price_range(float(i['price']))
+            }
+            instance_dict[instance_name] = instance
+
         return instance_dict
     else:
         return instance_dict
@@ -375,8 +396,8 @@ def main():
         head, tail = path.split(datadir)
         if tail:
             mkdir(datadir)
-    if len(sys.argv) == 2 and sys.arv[1] == 'ec2':
-        update_instance_list('ec2only')
+    if len(sys.argv) == 2:
+        update_instance_list(sys.arv[1])
     else:
         instance_dict = update_instance_list('')
     with open('web/data/instances.json', 'w') as outfile:

@@ -9,7 +9,7 @@ import sys
 
 if 1 < len(sys.argv):
     pyrax.settings.set('identity_type', 'rackspace')
-    #pyrax.set_credentials(,)
+    pyrax.set_credentials('cisco_iomz','185eb75a0cc84740a57dce495b0f1d60')
     cf = pyrax.connect_to_cloudfiles("ORD")
     rejected_strings=["512MB_Standard_Instance\n",".cloudfuse.swp" , "Benchmarking" , "Benchmarking tests" , "transcoded" , "videos" ,  "Sky Diving" , "x264-bench" , "test\n" , "aws powerful\n" , "transcoded" , "videos" , "x264-bench","UnixBench results","VideoTranscoding", "Results static website"]   
     
@@ -27,6 +27,8 @@ if 1 < len(sys.argv):
         else:
             name = instance_name
         if 't1' in name:
+            continue
+        if 'Nimbus' not in name:
             continue
         xd[name] = {}
         for i in range(1,4):
@@ -47,7 +49,7 @@ if 1 < len(sys.argv):
             print name, t1, t2, t3
         '''
     
-    with open('web/data/x264_raw.json', 'w') as outfile:
+    with open('web/data/nimbus_raw.json', 'w') as outfile:
         js.dump(xd, fp=outfile, indent=4*' ')
 else:
     try:
@@ -56,12 +58,20 @@ else:
         print "*** web/data/x264_raw.json not found! Try ./update_instances.py first! ***"
         sys.exit(1)
     try:
+        nd = json.load(open("web/data/nimbus_raw.json", "r"))
+    except IOError:
+        print "*** web/data/nimbus_raw.json not found! Try ./update_instances.py first! ***"
+        sys.exit(1)
+     try:
         et = json.load(open("web/data/elastic_transcoder.json", "r"))
     except IOError:
         print "*** web/data/elastic_transcoder.json not found! Try ./update_instances.py first! ***"
         sys.exit(1)
     xd['elastic_transcoder'] = {}
     for k,v in et.iteritems():
+        for i in v.keys():
+            xd[k][i] = float(v[i])
+    for k,v in nd.iteritems():
         for i in v.keys():
             xd[k][i] = float(v[i])
     try:
@@ -96,5 +106,5 @@ else:
         else:
             xj[k]['cloud'] = ij[k]['cloud']    
     
-    with open('web/data/x264_stat_inv.json', 'w') as outfile:
+    with open('web/data/x264_stat_inv2.json', 'w') as outfile:
         js.dump(xj, fp=outfile, indent=4*' ')

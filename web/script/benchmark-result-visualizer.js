@@ -108,7 +108,8 @@ function plotx264(xsorter, limit, order) {
 	var balancedName = 'Balanced Score';
 	var ec2ColName = 'EC2: ' + balancedName;
 	var rackColName = 'Rackspace: ' + balancedName;
-	var etColName = 'Elastic Transcoder ' + balancedName
+	var etColName = 'Elastic Transcoder ' + balancedName;
+	var niColName = 'Nimbus: ' + balancedName;
 	var names = x264s().order(sorter + order).limit(limit).map(function(i) {
 		return i.name;
 	});
@@ -124,24 +125,16 @@ function plotx264(xsorter, limit, order) {
 		return parseFloat(val.toFixed(2));
 	});
 	var ec2Col = x264s().order(sorter + order).limit(limit).map(function(i) {
-		if (i.cloud == 'ElasticTranscoder') {
-			return 0;
-		}
-		var val = i.balance;
-		return (i.cloud == 'EC2') ? parseFloat(val.toFixed(2)) : 0;
+		return (i.cloud == 'EC2') ? parseFloat(i.balance.toFixed(2)) : 0;
 	});
 	var rackCol = x264s().order(sorter + order).limit(limit).map(function(i) {
-		if (i.cloud == 'ElasticTranscoder') {
-			return 0;
-		}
-		var val = i.balance;
-		return (i.cloud == 'Rackspace') ? parseFloat(val.toFixed(2)) : 0;
+		return (i.cloud == 'Rackspace') ? parseFloat(i.balance.toFixed(2)) : 0;
 	});
 	var etCol = x264s().order(sorter + order).limit(limit).map(function(i) {
-		if (i.cloud == 'ElasticTranscoder') {
-			return parseFloat(i.balance.toFixed(2));
-		}
-		return 0;
+		return (i.cloud == 'ElasticTranscoder') ? parseFloat(i.balance.toFixed(2)) : 0;
+	});
+	var niCol = x264s().order(sorter + order).limit(limit).map(function(i) {
+		return (i.cloud == 'Nimbus') ? parseFloat(i.balance.toFixed(2)) : 0;
 	});
 	var series = [{
 		color : colors[6],
@@ -156,11 +149,17 @@ function plotx264(xsorter, limit, order) {
 		yAxis : 0,
 		data : rackCol
 	}, {
-		color : colors[7],
+		color : colors[8],
 		name : etColName,
 		type : 'column',
 		yAxis : 0,
 		data : etCol
+	}, {
+		color : colors[7],
+		name : niColName,
+		type : 'column',
+		yAxis : 0,
+		data : niCol
 	}, {
 		color : colors[3],
 		name : 'Encoding Cost [$]',
@@ -181,6 +180,7 @@ function plotx264(xsorter, limit, order) {
 	ec2Col.reverse();
 	rackCol.reverse();
 	etCol.reverse();
+	niCol.reverse();
 	/* If available, plot the SD for the cols */
 	if (sorter == 'cost') {
 		var sds = x264s().order(sorter + order).limit(limit).map(function(i) {
@@ -333,6 +333,22 @@ function plotUtils(util, limit, order) {
 		data : yDataRackspace,
 		yAxis : 0
 	});
+	// Nimbus column
+	var yDataNimbus = utils().order(util + order).limit(limit).map(function(i) {
+		if (util == 'memUtil')
+			var val = i.memUtil;
+		else if (util == 'vcpuUtil')
+			var val = i.vcpuUtil;
+		return (i.cloud == 'Nimbus') ? parseFloat(val.toFixed(2)) : 0;
+	});
+	yDataNimbus.reverse();
+	seriesData.push({
+		color : colors[7],
+		name : 'Nimbus: Utilization (%)',
+		data : yDataNimbus,
+		yAxis : 0
+	});
+	// Memory sizes
 	if (util == 'memUtil') {
 		var utilName = 'Memory utilization';
 		// Memory Size
@@ -457,8 +473,17 @@ function plotUtilDetails(util, limit, order) {
 		var resource = 'vcpuUtil';
 		var utilName = 'vCPU utilization per cores';
 		var yData = utils().order(resource + order).limit(limit).map(function(i) {
+			var utilColor;
+			if (i.cloud == 'EC2')
+				utilColor = colors[6];
+			else if (i.cloud == 'Rackspace')
+				utilColor = colors[5];
+			else if (i.cloud == 'Nimbus')
+				utilColor = colors[7];
+			else
+			;
 			return {
-				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
+				color : utilColor,
 				drilldown : i.name,
 				name : i.name,
 				y : parseFloat(i.vcpuUtil.toFixed(2))
@@ -489,8 +514,17 @@ function plotUtilDetails(util, limit, order) {
 		var resource = 'vcpuUtil';
 		var utilName = 'vCPU utilization per time frame';
 		var yData = utils().order(resource + order).limit(limit).map(function(i) {
+			var utilColor;
+			if (i.cloud == 'EC2')
+				utilColor = colors[6];
+			else if (i.cloud == 'Rackspace')
+				utilColor = colors[5];
+			else if (i.cloud == 'Nimbus')
+				utilColor = colors[7];
+			else
+			;
 			return {
-				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
+				color : utilColor,
 				drilldown : i.name,
 				name : i.name,
 				y : parseFloat(i.vcpuUtil.toFixed(2))
@@ -521,8 +555,17 @@ function plotUtilDetails(util, limit, order) {
 		var resource = 'memUtil';
 		var utilName = 'Memory utilization per time frame';
 		var yData = utils().order(resource + order).limit(limit).map(function(i) {
+			var utilColor;
+			if (i.cloud == 'EC2')
+				utilColor = colors[6];
+			else if (i.cloud == 'Rackspace')
+				utilColor = colors[5];
+			else if (i.cloud == 'Nimbus')
+				utilColor = colors[7];
+			else
+			;
 			return {
-				color : (i.cloud == 'EC2') ? colors[6] : colors[5],
+				color : utilColor,
 				drilldown : i.name,
 				name : i.name,
 				y : parseFloat(i.memUtil.toFixed(2))
@@ -748,6 +791,7 @@ function plotUnixBenchs(test, sorter, limit, order) {
 	var names = [];
 	var ec2s = [];
 	var racks = [];
+	var nimbuses = [];
 	var costs = [];
 	var perfs = [];
 	var perfErrs = [];
@@ -756,20 +800,29 @@ function plotUnixBenchs(test, sorter, limit, order) {
 		if (data[i]['cloud'] == 'EC2') {
 			ec2s.push(parseFloat(data[i][test + '_balance'].toFixed(2)));
 			racks.push(0);
-		} else {
+			nimbuses.push(0);
+		} else if (data[i]['cloud'] == 'Rackspace') {
 			ec2s.push(0);
 			racks.push(parseFloat(data[i][test + '_balance'].toFixed(2)));
+			nimbuses.push(0);
+		} else if (data[i]['cloud'] == 'Nimbus') {
+			ec2s.push(0);
+			racks.push(0);
+			nimbuses.push(parseFloat(data[i][test + '_balance'].toFixed(2)));
+		} else {
+			;
 		}
 		costs.push(parseFloat(data[i][test + '_cost_z'].toFixed(2)));
 		perfs.push(parseFloat(data[i][test + '_perf'].toFixed(2)));
-		var low = data[i][test + '_perf'] - data[i][test + '_perf_err']
-		var high = data[i][test + '_perf'] + data[i][test + '_perf_err']
+		var low = data[i][test + '_perf'] - data[i][test + '_perf_err'];
+		var high = data[i][test + '_perf'] + data[i][test + '_perf_err'];
 		perfErrs.push([parseFloat(low.toFixed(2)), parseFloat(high.toFixed(2))]);
 	}
 	// Reverse the order to show the plot collectly
 	names.reverse();
 	ec2s.reverse();
 	racks.reverse();
+	nimbuses.reverse();
 	costs.reverse();
 	perfs.reverse();
 	perfErrs.reverse();
@@ -785,6 +838,12 @@ function plotUnixBenchs(test, sorter, limit, order) {
 		type : 'column',
 		yAxis : 0,
 		data : racks
+	}, {
+		color : colors[7],
+		name : 'Nimbus Balanced Score',
+		type : 'column',
+		yAxis : 0,
+		data : nimbuses
 	}, {
 		color : colors[3],
 		name : 'Cost',
@@ -1069,7 +1128,7 @@ $(function() {
 	$('#x264test').hide();
 	$('#xsortbtns').show();
 	$('#togglebtns').show();
-	$.getJSON("data/x264_inv.json", function(d) {
+	$.getJSON("data/x264_inv2.json", function(d) {
 		$.each(d, function(k, v) {
 			x264s.insert({
 				name : k,
@@ -1085,7 +1144,7 @@ $(function() {
 		});
 		plotx264(currentSorter, currentLimit, currentOrder);
 	});
-	$.getJSON("data/util.json", function(d) {
+	$.getJSON("data/util2.json", function(d) {
 		$.each(d, function(k, v) {
 			utils.insert({
 				name : k,
@@ -1100,7 +1159,7 @@ $(function() {
 			});
 		});
 	});
-	$.getJSON("data/unixbench.json", function(d) {
+	$.getJSON("data/unixbench2.json", function(d) {
 		$.each(d, function(k, v) {
 			var i = {
 				name : k,

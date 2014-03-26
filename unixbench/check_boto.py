@@ -11,6 +11,7 @@ except ImportError:
     sys.exit(0)
 
 instance_name = open('/var/local/instance_name').read().strip()
+#instance_name = sys.argv[1]
 
 # Check if the table exists or not, create one if not
 print "*** Connecting to DynamoDB '%s' table..." % instance_name

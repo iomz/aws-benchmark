@@ -30,10 +30,10 @@ TODOs
 * Launch scripts
     * Automated configuration setup (Interactive?)
     * Argument parsing in unixbench/upload_log.py
+    * Aggrigate the run script and json generator
 
-* Web graphs
-    * Automatical deployment
+* Result data
+    * Simplify data retrieval and store
 
 * Documentation
-    * Summary for the results
     * Usage

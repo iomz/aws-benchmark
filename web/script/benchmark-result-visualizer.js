@@ -932,17 +932,16 @@ function plotScatter(test, metric) {
 		});
 		var cost = test + '_' + 'cost_z';
 		var perf = test + '_' + 'perf_z';
-		var alpha = 1;
 	} else {
 		var data = x264s().map(function(i) {
 			return i;
 		});
 		var cost = 'costZ';
 		var perf = 'timeZ';
-		var alpha = -1;
 	}
 	var ec2paravirtuals = [];
 	var rackparavirtuals = [];
+	var nimparavirtuals = [];
 	var hvms = [];
 	for (var i = 0; i < data.length; i++) {
 		if (data[i]['cloud'] == 'EC2') {
@@ -950,21 +949,29 @@ function plotScatter(test, metric) {
 				hvms.push({
 					name : data[i]['name'],
 					x : parseFloat(data[i][cost].toFixed(2)),
-					y : parseFloat(alpha * data[i][perf].toFixed(2))
+					y : parseFloat(data[i][perf].toFixed(2))
 				});
 			} else {
 				ec2paravirtuals.push({
 					name : data[i]['name'],
 					x : parseFloat(data[i][cost].toFixed(2)),
-					y : parseFloat(alpha * data[i][perf].toFixed(2))
+					y : parseFloat(data[i][perf].toFixed(2))
 				});
 			}
-		} else {
+		} else if (data[i]['cloud'] == 'Rackspace') {
 			rackparavirtuals.push({
 				name : data[i]['name'],
 				x : parseFloat(data[i][cost].toFixed(2)),
-				y : parseFloat(alpha * data[i][perf].toFixed(2))
+				y : parseFloat(data[i][perf].toFixed(2))
 			});
+		} else if (data[i]['cloud'] == 'Nimbus') {
+			nimparavirtuals.push({
+				name : data[i]['name'],
+				x : parseFloat(data[i][cost].toFixed(2)),
+				y : parseFloat(data[i][perf].toFixed(2))
+			});
+		} else {
+			;
 		}
 	}
 	$('#' + currentTab + '_chart').highcharts({
@@ -993,7 +1000,7 @@ function plotScatter(test, metric) {
 			layout : 'vertical',
 			align : 'left',
 			verticalAlign : 'top',
-			x : 100,
+			x : 700,
 			y : 30,
 			floating : true,
 			backgroundColor : '#FFFFFF',
@@ -1031,6 +1038,10 @@ function plotScatter(test, metric) {
 			name : 'Rackspace Paravirtual',
 			color : colors[5],
 			data : rackparavirtuals
+		}, {
+			name : 'Nimbus',
+			color : colors[7],
+			data : nimparavirtuals
 		}, {
 			name : 'EC2 HVM',
 			color : colors[2],

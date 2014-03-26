@@ -1,21 +1,25 @@
-ec2-vid-benchmark
+cloud-bench
 =================
 
-Benchmark script of AWS EC2 instances for video processing performance
+Benchmark scripts for video processing performance measurement
 
 Features
 ----
-* Perform UnixBench on all the EC2 insctances
-* Parse and store the results into DynamoDB
-* Plot the results in HTML5
+* Deploy instances on several cloud stacks with pre-compiled benchmark scripts (Unixbench + x264)
+* Aggregate the results and plot them in HTML5
 
-Prepare
+Preparation for AWS
 ----
     $ pip install boto
     $ echo "[Credentials]\naws_access_key_id = <your aws access key id>\naws_secret_access_key = <your aws secret key>" > ~/.boto
-    $ git clone https://github.com/iomz/ec2-vid-benchmark.git
-    $ cd ec2-vid-benchmark
-    $ ./update_instances.py
+    $ git clone https://github.com/iomz/cloud-bench.git
+    $ cd cloud-bench && ./generate_json.py update -f
+    
+Preparation for Rackspace
+----
+
+Preparation for Cisco Cloud
+----
 
 Start UnixBench
 ----
@@ -23,7 +27,7 @@ Start UnixBench
 
 Start x264
 ----
-    $ ./run_ec2_benchmark.py x264
+    $ ./run_ec2_benchmark.py x264 $$ ./generate_json.py rank
 
 TODOs
 ----

@@ -12,6 +12,7 @@ from os import mkdir, path
 from pprint import pprint
 from time import sleep
 import json
+import operator
 import pytz
 import re
 import simplejson as js
@@ -474,8 +475,8 @@ def gen_unixbench_results(instances_dict):
                         log_raw[l['parallel']][int(l['trial'])] = {}
                     log_raw[l['parallel']][int(l['trial'])][Tests[t]] = float(l[TestNames[t]])
         except JSONResponseError:
-            print "No log was found for %s" % instance_name
-            sys.exit(1)
+            print "- No log was found for %s" % instance_name
+            continue
         #pprint(log_raw)
         #logs[instance_name] = parse_log(log_raw)
         log_dict = parse_log(log_raw)
@@ -496,7 +497,7 @@ def gen_unixbench_results(instances_dict):
                 log['vcpu'] = instances_dict[instance_name]['vcpu']
                 logs.append(log)
  
-    result_file = 'web/data/unixbench_raw.json'
+    result_file = 'web/data/unixbench_raw2.json'
     with open(result_file, 'w') as outfile:
         js.dump(logs, fp=outfile, indent=4*' ')
     print "+ " + result_file + " generated!"
@@ -629,7 +630,8 @@ def gen_iperf_results(instances_dict):
         iperf_logs = Table('Iperf_logs')
         for l in iperf_logs.scan():
             client = l['instance_name']
-            if client == 'c3.large_hvm':
+            # FIXME: no exception, adjust database
+            if client == 'c3.large_hvm' or client == 'c3.4xlarge_hvm':
                 continue
             server = 'Oregon' if 'west' in l['iperf_server'] else 'N.Virginia'
             m, d, y, h, mi = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
@@ -674,8 +676,9 @@ def gen_iperf_results(instances_dict):
     print "*** Done! ***"
 
 
+# FIXME: modulerization of utilization json files per cloud
 def parse_util_results():
-    res = json.load(open('web/data/util_raw.json', "r"))
+    res = json.load(open('web/data/util_raw2.json', "r"))
     instances = json.load(open('web/data/instances.json', "r"))
     util_dict = {}
     for i in res:
@@ -688,10 +691,12 @@ def parse_util_results():
                 name = s[0].lower() + '_' + s[1].lower() + '_' + virt
             else: # Performance
                 name = s[0] + "gb_" + s[2].lower() + '_' + virt
+        elif i['Cloud']=='Nimbus':
+            name = i['name'] + '_paravirtual'
         else:
             name = i['name']
         try:
-            vcpu = int(i['vCPU'])
+            vcpu = int(instances[name]['vcpu'])
         except ValueError: # m1.small
             vcpu = 1
     
@@ -764,8 +769,154 @@ def parse_util_results():
             'cpu_utl_time' : cutod
         }
     
-    with open('web/data/util.json', 'w') as outfile:
+    with open('web/data/util2.json', 'w') as outfile:
         js.dump(util_dict, fp=outfile, indent=4*' ')
+
+
+# Rank x264 results
+# FIXME: modulerization of cloud results
+def rank_x264(ij):
+    # Parse raw x264 results from clouds
+    try:
+        xd = json.load(open("web/data/x264_raw.json", "r"))
+    except IOError:
+        print "*** web/data/x264_raw.json not found! Try ./update_instances.py first! ***"
+        sys.exit(1)
+    try:
+        nd = json.load(open("web/data/nimbus_raw.json", "r"))
+    except IOError:
+        print "*** web/data/nimbus_raw.json not found! Try ./update_instances.py first! ***"
+        sys.exit(1)
+    try:
+        et = json.load(open("web/data/elastic_transcoder.json", "r"))
+    except IOError:
+        print "*** web/data/elastic_transcoder.json not found! Try ./update_instances.py first! ***"
+        sys.exit(1)
+    for k,v in et.iteritems():
+        xd[k] = {}
+        for i in v.keys():
+            xd[k][i] = float(v[i])
+    for k,v in nd.iteritems():
+        xd[k] = {}
+        for i in v.keys():
+            xd[k][i] = float(v[i])
+    xj = {}
+    for k,v in xd.iteritems():
+        xj[k] = {}
+        mean = sum(v.values())/len(v)
+        xj[k]['time'] = mean
+        xj[k]['time_inv'] = 1/mean
+        v_sum = 0
+        for t in v.values():
+            v_sum += ((1/t) - (1/mean))**2
+        xj[k]['time_inv_sd'] = sqrt(v_sum/(len(v)-1))
+        if k=='elastic_transcoder':
+            xj[k]['cost'] = 0.33
+        else:
+            xj[k]['cost'] = mean*ij[k]['price']/3600
+        v_sum = 0
+        for t in v.values():
+            if k=='elastic_transcoder':
+                v_sum += 0
+            else:
+                v_sum += (t*ij[k]['price']/3600-mean*ij[k]['price']/3600)**2
+        xj[k]['cost_sd'] = sqrt(v_sum/(len(v)-1))
+        if k=='elastic_transcoder':
+            xj[k]['cloud'] = 'ElasticTranscoder'
+        else:
+            xj[k]['cloud'] = ij[k]['cloud']
+    with open('web/data/x264_stat_inv2.json', 'w') as outfile:
+        js.dump(xj, fp=outfile, indent=4*' ')
+
+    # Rank the results from raw data
+    x264_json = 'web/data/x264_stat_inv2.json'
+    res = json.load(open(x264_json, "r"))
+    ranks = {}
+    for k,v in res.iteritems():
+        ranks[k] = {}
+        ranks[k]['time'] = v['time']
+        ranks[k]['time_inv'] = v['time_inv']
+        ranks[k]['time_inv_sd'] = v['time_inv_sd']
+        ranks[k]['cost'] = v['cost']
+        ranks[k]['cost_sd'] = v['cost_sd']
+        ranks[k]['cloud'] = v['cloud']
+ 
+    # Show x264 ranks
+    balance_dict = {}
+    for sort in ['time_inv', 'cost']:
+        # Calculate z-score
+        values = []
+        value_sum = 0
+        for v in ranks.values():
+            values.append(v[sort])
+            value_sum += v[sort]
+        mean = value_sum/len(ranks)
+        variance_sum = 0
+        for v in values:
+            variance_sum += (v-mean)**2
+        sd = sqrt(variance_sum/(len(ranks)-1))
+        for k in ranks.keys():
+            ranks[k][sort+'_z'] = (ranks[k][sort]-mean)/sd
+ 
+    # Calculate the balanced score for x264 and Elastic transcoder
+    for k,v in ranks.iteritems():
+        ranks[k]['balance'] =  v['time_inv_z'] - v['cost_z']
+        #ranks[k]['balance'] =  v['time_inv_z'] / v['cost_z']
+
+    with open('web/data/x264_inv2.json', 'w') as outfile:
+        js.dump(ranks, fp=outfile, indent=4*' ')
+    return ranks
+
+
+# UnixBench
+def rank_unixbench(ranks):
+    unixbench_json = 'web/data/unixbench_raw2.json'
+    res = json.load(open(unixbench_json, "r"))
+    ud = {}
+    pd = {}
+    for v in res:
+        k = v['name']
+        if k not in ranks:
+            continue
+        if k in pd:
+            if pd[k]!='single':
+                continue
+        pd[k] = v['parallel']
+        if k not in ud:
+            ud[k] = {}
+            ud[k]['cloud'] = ranks[k]['cloud']
+            ud[k][v['test']] = {}
+        else:
+            if v['test'] not in ud[k]:
+                ud[k][v['test']] = {}
+        ud[k][v['test']]['cost'] = v['price']
+        ud[k][v['test']]['perf'] = v['mean']
+        ud[k][v['test']]['perf_err'] = v['sd']
+ 
+    # Show unixbench ranks
+    for test in Tests:
+        if test == 'x264':
+            continue
+        for metric in ['perf','cost']:
+            # Calculate z-score
+            values = []
+            for k, v in ud.iteritems():
+                values.append(v[test][metric])
+            mean = sum(values)/len(values)
+            variance_sum = 0
+            for v in values:
+                variance_sum += (v-mean)**2
+            sd = sqrt(variance_sum/(len(values)-1))
+            for k, v in ud.iteritems():
+                ud[k][test][metric+'_z'] = (v[test][metric]-mean)/sd
+
+        # Calculate the Balanced score for UnixBench tests
+        for k,v in ud.iteritems():
+            ud[k][test]['balance'] = v[test]['perf_z'] - v[test]['cost_z']
+            #ud[k][test]['balance'] = v[test]['perf_z'] / v[test]['cost_z']
+ 
+    with open('web/data/unixbench2.json', 'w') as outfile:
+        js.dump(ud, fp=outfile, indent=4*' ')
 
 
 def main():
@@ -811,22 +962,23 @@ def main():
         # unixbench mode
         if sys.argv[1] == 'unixbench':
             gen_unixbench_results(instances_dict)
-
         # group mode
         elif sys.argv[1] == 'group':
             gen_group_results(instances_dict)
-
         # iperf mode
         elif sys.argv[1] == 'iperf':
             gen_iperf_results(instances_dict)
-
+        # rank mode
+        elif sys.argv[1] == 'rank':
+            ranks = rank_x264(instances_dict)
+            rank_unixbench(ranks)
         # unrecognized mode
         else:
-            print "usage: %s [unixbench|group|iperf]" % sys.argv[0]
+            print "usage: %s [unixbench|group|iperf|util|rank]" % sys.argv[0]
 
     # no mode provided
     else:
-        print "usage: %s [unixbench|group|iperf]" % sys.argv[0]
+        print "usage: %s [unixbench|group|iperf|util|rank]" % sys.argv[0]
 
 if __name__ == "__main__":
     main()

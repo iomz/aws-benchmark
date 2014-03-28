@@ -152,7 +152,7 @@ def main():
     conn = boto.ec2.connect_to_region(region)
     
     # For manual list of instances, modify here
-    instances = ['c3.large_hvm','c3.2xlarge_hvm','c3.8xlarge_hvm','c3.8xlarge_paravirtual','cc2.8xlarge_hvm']
+    instances = ['m3.medium_hvm','m3.medium_paravirtual','m3.large_hvm','m3.large_paravirtual']
     #completed = ['t1.micro_paravirtual']
     num_instances = len(instances)
     if option == 'iperf':

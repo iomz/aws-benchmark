@@ -479,9 +479,9 @@ def gen_unixbench_results(instances_dict):
             continue
         #pprint(log_raw)
         #logs[instance_name] = parse_log(log_raw)
+        print "*** [%d/%d] Log data from %s loaded! ***" % (count, n_instances, instance_name)
         log_dict = parse_log(log_raw)
         count += 1
-        print "*** [%d/%d] Log data from %s loaded! ***" % (count, n_instances, instance_name)
         for p in log_dict.keys():
             for t in log_dict[p].keys():
                 log = {}
@@ -865,26 +865,23 @@ def rank_x264(ij):
 
     with open('web/data/x264_inv2.json', 'w') as outfile:
         js.dump(ranks, fp=outfile, indent=4*' ')
-    return ranks
 
 
 # UnixBench
-def rank_unixbench(ranks):
+def rank_unixbench(ij):
     unixbench_json = 'web/data/unixbench_raw2.json'
     res = json.load(open(unixbench_json, "r"))
     ud = {}
     pd = {}
     for v in res:
         k = v['name']
-        if k not in ranks:
-            continue
         if k in pd:
             if pd[k]!='single':
                 continue
         pd[k] = v['parallel']
         if k not in ud:
             ud[k] = {}
-            ud[k]['cloud'] = ranks[k]['cloud']
+            ud[k]['cloud'] = ij[k]['cloud']
             ud[k][v['test']] = {}
         else:
             if v['test'] not in ud[k]:
@@ -970,8 +967,8 @@ def main():
             gen_iperf_results(instances_dict)
         # rank mode
         elif sys.argv[1] == 'rank':
-            ranks = rank_x264(instances_dict)
-            rank_unixbench(ranks)
+            rank_x264(instances_dict)
+            rank_unixbench(instances_dict)
         # unrecognized mode
         else:
             print "usage: %s [unixbench|group|iperf|util|rank]" % sys.argv[0]

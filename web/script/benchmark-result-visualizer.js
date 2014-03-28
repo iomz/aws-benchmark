@@ -1057,7 +1057,7 @@ function plotIperf(dst) {
 		var yMax = 10000;
 	} else {
 		var dstName = 'Oregon';
-		var yMax = 3000;
+		var yMax = 400;
 	}
 	$.getJSON("data/iperf.json", function(d) {
 		iperfs = TAFFY();

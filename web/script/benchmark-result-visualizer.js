@@ -10,6 +10,7 @@
 var instances = null;
 var groupResults = null;
 var iperfs = null;
+var iperf2s = null;
 var x264s = TAFFY();
 var unixbenchs = TAFFY();
 var utils = TAFFY();
@@ -19,7 +20,7 @@ var currentTest = "x264";
 var currentSorter = "balance";
 var currentGroup = "vcpu";
 var currentOrder = ' desc';
-var Dsts = ['nvirginia', 'oregon'];
+var Dsts = ['nvirginia', 'oregon', 'subregion'];
 var colors = Highcharts.getOptions().colors;
 var Metrics = {
 	'cost' : 'Cost',
@@ -1051,6 +1052,59 @@ function plotScatter(test, metric) {
 	$('#' + currentTab + '_chart').highcharts().setSize(1000, 600);
 }
 
+function plotIperf2() {
+	$.getJSON("data/iperf2.json", function(d) {
+		iperf2s = TAFFY();
+		$.each(d, function(k, v) {
+			iperf2s.insert({
+				bw : v,
+				path : k
+			});
+		});
+		var cc = 0;
+		var seriesData = iperf2s().map(function(i) {
+			cc++;
+			var bwArr = [];
+			for (var d = 0; d < i.bw.length; d++) {
+				bwArr.push([Date.UTC(i.bw[d]['year'], i.bw[d]['month'] - 1, i.bw[d]['day'], i.bw[d]['hour'], i.bw[d]['minute']), i.bw[d]['bandwidth']]);
+			}
+			return {
+				color : colors[cc],
+				data : bwArr,
+				name : i.path,
+				step : true
+			};
+		});
+		$('#subregion_chart').highcharts({
+			chart : {
+				type : 'line',
+				zoomType : 'x'
+			},
+			title : {
+				text : 'Iperf measurement between c3.8xlarge(us-east-1d, On-demand)'
+			},
+			xAxis : {
+				title : {
+					text : 'Time in EST'
+				},
+				type : 'datetime',
+				maxZoom : 1 * 3600 * 1000
+			},
+			yAxis : {
+				max : 3000,
+				min : 0,
+				title : {
+					text : 'Bandwidth (Mbits/sec)'
+				}
+			},
+			legend : {
+			},
+			series : seriesData
+		});
+		$('#subregion_chart').highcharts().setSize(1000, 600);
+	});
+}
+
 function plotIperf(dst) {
 	if (dst == 'nvirginia') {
 		var dstName = 'N.Virginia';
@@ -1258,7 +1312,11 @@ $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
 		$('#x264test').hide();
 		$('#togglebtns').hide();
 		$('#xsortbtns').hide();
-		plotIperf(currentTab);
+		if (currentTab != 'subregion') {
+			plotIperf(currentTab);
+		} else {
+			plotIperf2();
+		}
 	} else {// If in the Home tab
 		;
 	}

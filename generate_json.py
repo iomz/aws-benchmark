@@ -627,49 +627,54 @@ def gen_group_results(instances_dict):
 def gen_iperf_results(instances_dict):
     iperf_path = {}
     try:
-        iperf_logs = Table('Iperf_logs')
+        iperf_logs = Table('Iperf2_logs')
         for l in iperf_logs.scan():
-            client = l['instance_name']
-            # FIXME: no exception, adjust database
-            if client == 'c3.large_hvm' or client == 'c3.4xlarge_hvm':
+            path = l['path']
+            ignore_paths = ["c3.8xlarge_hvm_spot-c3.8xlarge_hvm_od","c3.2xlarge_hvm_spot-c3.8xlarge_hvm_od"]
+            path_names = {"c3.2xlarge_hvm_od-c3.8xlarge_hvm_od": "c3.2xlarge(us-east-1d, On-demand)",
+                            "c3.8xlarge_hvm_od-c3.8xlarge_hvm_od": "c3.8xlarge(us-east-1d, On-demand)",
+                            "c3.8xlarge_hvm_spot_us-east-1c-c3.8xlarge_hvm_od": "c3.8xlarge(us-east-1c, Spot)"}
+            if path in ignore_paths:
                 continue
-            server = 'Oregon' if 'west' in l['iperf_server'] else 'N.Virginia'
+            else:
+                path = path_names[path]
             m, d, y, h, mi = re.search(r"\D+(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", l['datetime']).groups()
-            #if int(h)%2==0:
-            #    continue
             time = datetime(2000+int(y),int(m),int(d),int(h),int(mi))
             bw = re.search(r"(\d+)\s", l['bandwidth']).group(1)
-            if client not in iperf_path:
-                iperf_path[client] = {}
-            if server not in iperf_path[client]:
-                iperf_path[client][server] = {}
-            iperf_path[client][server][time] = int(bw)
+            if path not in iperf_path:
+                iperf_path[path] = {}
+            iperf_path[path][time] = int(bw)
+            #if client not in iperf_path:
+            #    iperf_path[client] = {}
+            #if server not in iperf_path[client]:
+            #    iperf_path[client][server] = {}
+            #iperf_path[client][server][time] = int(bw)
     except JSONResponseError:
         print "No Iperf_logs table was found in DynamoDB"
         sys.exit(1)
     #pprint(iperf_path)
     iperf_dict = {}
     for k,v in iperf_path.iteritems():
-        for kk,vv in v.iteritems():
-            path = k + '-' + kk
-            if path not in iperf_dict:
-                iperf_dict[path] = {}
-            dbod = OrderedDict(sorted(vv.items()))
-            db_arr = []
-            for d,b in dbod.iteritems():
-                dt = pytz.utc.localize(d).astimezone(pytz.timezone('US/Eastern'))
-                #dts = dt.year+dt.month+dt.day+dt.hour+dt.minute
-                point = {}
-                point['bandwidth'] = b
-                point['year'] = dt.year
-                point['month'] = dt.month
-                point['day'] = dt.day
-                point['hour'] = dt.hour
-                point['minute'] = dt.minute
-                db_arr.append(point)
-            iperf_dict[path] = db_arr
+        path = k
+        if path not in iperf_dict:
+            iperf_dict[path] = {}
+        dbod = OrderedDict(sorted(v.items()))
+        db_arr = []
+        for d,b in dbod.iteritems():
+            dt = pytz.utc.localize(d).astimezone(pytz.timezone('US/Eastern'))
+            #dts = dt.year+dt.month+dt.day+dt.hour+dt.minute
+            point = {}
+            point['bandwidth'] = b
+            point['year'] = dt.year
+            point['month'] = dt.month
+            point['day'] = dt.day
+            point['hour'] = dt.hour
+            point['minute'] = dt.minute
+            db_arr.append(point)
+        # FIXME: parse path to more cognitive format
+        iperf_dict[path] = db_arr
     
-    result_file = 'web/data/iperf.json'
+    result_file = 'web/data/iperf2.json'
     with open(result_file, 'w') as outfile:
         js.dump(iperf_dict, fp=outfile, indent=4*' ')
     print "+ " + result_file + " generated!"

@@ -37,7 +37,8 @@ if 2 < len(sys.argv):
         sys.exit(1)
 
     for k,v in xd.iteritems():
-        if k not in ext_filter:
+#        if k not in ext_filter:
+        if 'ebs' in k:
             to_remove.append(k)
     for k in to_remove:
         xd.pop(k)

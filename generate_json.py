@@ -807,6 +807,8 @@ def rank_x264(ij):
             xd[k][i] = float(v[i])
     xj = {}
     for k,v in xd.iteritems():
+        if k not in ij and k != 'elastic_transcoder':
+            continue
         xj[k] = {}
         mean = sum(v.values())/len(v)
         xj[k]['time'] = mean
@@ -830,11 +832,11 @@ def rank_x264(ij):
             xj[k]['cloud'] = 'ElasticTranscoder'
         else:
             xj[k]['cloud'] = ij[k]['cloud']
-    with open('web/data/x264_stat_inv2.json', 'w') as outfile:
+    with open('web/data/x264_stat_inv3.json', 'w') as outfile:
         js.dump(xj, fp=outfile, indent=4*' ')
 
     # Rank the results from raw data
-    x264_json = 'web/data/x264_stat_inv2.json'
+    x264_json = 'web/data/x264_stat_inv3.json'
     res = json.load(open(x264_json, "r"))
     ranks = {}
     for k,v in res.iteritems():
@@ -868,7 +870,7 @@ def rank_x264(ij):
         ranks[k]['balance'] =  v['time_inv_z'] - v['cost_z']
         #ranks[k]['balance'] =  v['time_inv_z'] / v['cost_z']
 
-    with open('web/data/x264_inv2.json', 'w') as outfile:
+    with open('web/data/x264_inv3.json', 'w') as outfile:
         js.dump(ranks, fp=outfile, indent=4*' ')
 
 
@@ -880,6 +882,8 @@ def rank_unixbench(ij):
     pd = {}
     for v in res:
         k = v['name']
+        if k not in ij:
+            continue
         if k in pd:
             if pd[k]!='single':
                 continue
@@ -891,7 +895,7 @@ def rank_unixbench(ij):
         else:
             if v['test'] not in ud[k]:
                 ud[k][v['test']] = {}
-        ud[k][v['test']]['cost'] = v['price']
+        ud[k][v['test']]['cost'] = ij[k]['price']
         ud[k][v['test']]['perf'] = v['mean']
         ud[k][v['test']]['perf_err'] = v['sd']
  
@@ -917,7 +921,7 @@ def rank_unixbench(ij):
             ud[k][test]['balance'] = v[test]['perf_z'] - v[test]['cost_z']
             #ud[k][test]['balance'] = v[test]['perf_z'] / v[test]['cost_z']
  
-    with open('web/data/unixbench2.json', 'w') as outfile:
+    with open('web/data/unixbench3.json', 'w') as outfile:
         js.dump(ud, fp=outfile, indent=4*' ')
 
 
@@ -946,7 +950,7 @@ def main():
             instance_dict = update_instance_list('nimbus')
         else:
             print "usage: %s update [all|ec2|rackspace|nimbus] [-force]" % sys.argv[0]
-        with open('web/data/instances.json', 'w') as outfile:
+        with open('web/data/instances2.json', 'w') as outfile:
                 js.dump(instance_dict, fp=outfile, indent=4*' ')
 
     elif len(sys.argv) == 2:
@@ -956,7 +960,8 @@ def main():
 
         # Retrieve instance information
         try:
-            instances_dict = json.load(open("web/data/instances.json", "r"))
+            #instances_dict = json.load(open("web/data/instances.json", "r"))
+            instances_dict = json.load(open("web/data/instances_min.json", "r"))
         except IOError:
             print "*** web/data/instances.json not found! Try ./update_instances.py first! ***"
             sys.exit(1)

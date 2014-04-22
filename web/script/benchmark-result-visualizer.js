@@ -1193,7 +1193,7 @@ $(function() {
 	$('#x264test').hide();
 	$('#xsortbtns').show();
 	$('#togglebtns').show();
-	$.getJSON("data/x264_inv2.json", function(d) {
+	$.getJSON("data/x264_inv3.json", function(d) {
 		$.each(d, function(k, v) {
 			x264s.insert({
 				name : k,
@@ -1224,7 +1224,7 @@ $(function() {
 			});
 		});
 	});
-	$.getJSON("data/unixbench2.json", function(d) {
+	$.getJSON("data/unixbench3.json", function(d) {
 		$.each(d, function(k, v) {
 			var i = {
 				name : k,
@@ -1335,6 +1335,9 @@ $('#limitForm').keypress(function(e) {
 		if (!(currentLimit === parseInt(currentLimit))) {
 			currentLimit = 30;
 		}
+        if (currentLimit > 60) {
+            currentLimit = 60;
+        }
 		if (currentTab == 'x264') {
 			plotx264(currentSorter, currentLimit, currentOrder);
 		} else if (-1 < UtilDetails.indexOf(currentTab)) {
